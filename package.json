@@ -1,11 +1,14 @@
 {
   "name": "application-name",
   "version": "0.0.1",
-  "dependencies":{
+  "dependencies": {
     "bcrypt": "^0.8.0",
+    "biguint-format": "^1.0.0",
     "body-parser": "^1.10.1",
     "express": "^4.10.7",
+    "flake-idgen": "^1.0.0",
     "jwt-simple": "^0.2.0",
-    "lodash": "^2.4.1"
+    "lodash": "^2.4.1",
+    "mongoose": "^3.8.22"
   }
 }

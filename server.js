@@ -48,7 +48,9 @@ var _ = require('lodash');
 var bcrypt = require('bcrypt');
 var User  = require('./models/user')
 var Orders = require('./models/orders')
-
+var FlakeID = require('flake-idgen')
+var flakeidgen = new FlakeID();
+var intformat = require('biguint-format')
 
 app.use(require('body-parser').json());
 app.use(function(req,res,next){
@@ -59,68 +61,9 @@ app.use(function(req,res,next){
 });
 var secretkey = 'yeshavantagiridhar';
 
-/*function findUserByUsername(username){
-    return _.find(users,{username:username});
-}
-
-function validateUser(user,password,cb){
-    console.log('inside the post call');
-    console.log(bcrypt.compareSync(password,user.password));
-    bcrypt.compare(password,user.password,cb);
-}
-
-app.post('/session',function(req,res){
-    console.log('inside the post call');
-    var username = req.body.username;
-    console.log('username obtained is: ',username);
-    //TODO: validate password
-    var user =  findUserByUsername(req.body.username);
-    console.log('User obtained is: ',user.username)
-    *//*if(!validateUser(user,req.body.password)){
-        console.log('inside the if condition')
-        return res.sendStatus(401);
-    }
-    var token = jwt.encode({username:username},secretkey);
-    res.json(token);*//*
-
-    validateUser(user,req.body.password,function(err, valid){
-        console.log('inside the callback')
-        if(err || !valid){
-            return res.sendStatus(401);
-        }
-        var token = jwt.encode({username:username},secretkey);
-        res.json(token);
-    })
-});
-
-app.get('/user',function(req,res){
-    var token = req.header('X-Auth');
-    console.log(token);
-    var user =  jwt.decode(token,secretkey);
-    //TODO: Pull user from database
-    User.findOne({username:user.username}, function(err, user){
-        res.json(user)
-    })
-    res.json(user);
-})
-
-app.post('/user',function(req,res,next){
-    var userobject = new User({username:req.body.username});
-    bcrypt.hash(req.body.password, 10, function(err, hash){
-        userobject.password = hash;
-        userobject.save(function(err, user){
-            if(err){
-                throw next(err);
-            }
-            res.sendStatus(201)
-        })
-    });
-})*/
-
-/*
- The latest code starts from here.
- */
-
+/**********************************************************************************************************************/
+// All helper methods should be written in the top of this Javascript file
+/**********************************************************************************************************************/
 
 function ensureauthorized(req,res,next){
     var tokenfromrequest = req.header('X-Auth');
@@ -132,7 +75,7 @@ function ensureauthorized(req,res,next){
             next();
         }else{
             // token is present but has expired
-            res.sendStatus(401);
+            res.json({data:"token is present but it is expired"});
         }
     }else{
         //token is not present at all
@@ -140,40 +83,66 @@ function ensureauthorized(req,res,next){
     }
 
 }
-
+function getUniqueMerchantNumber(){
+    var merchantNumber = intformat(flakeidgen.next(),'dec');
+    console.log('MerchantNumber for this User is: ',merchantNumber);
+    return merchantNumber;
+}
 function getobjectToBeEncoded(newuserobject){
     var objectToBeEncoded = {};
     objectToBeEncoded.iss="foodpipe.in";
     objectToBeEncoded.exp=Date.now()+86400000;
     objectToBeEncoded.email=newuserobject.email;
     objectToBeEncoded.mobile=newuserobject.mobile;
+    objectToBeEncoded.merchantNumber = newuserobject.merchantNumber;
+    console.log('Merchant number is :',objectToBeEncoded.merchantNumber);
     return objectToBeEncoded;
+}
+
+function checkTokenStatus(req,res,next){
+    console.log('Inside the checkTokenStatus');
+    next();
 }
 
 function getOrdersForUser(user){
 
 }
-
+/**********************************************************************************************************************/
+/*
+    All the URL end points should be here
+ */
 app.post('/restrictedresource',ensureauthorized,function(req,res){
-    console.log('inside the restricted resource method');
+    //console.log('inside the restricted resource method');
     res.sendStatus(200);
 })
 
 app.post('/signup',function(req,res,next){
-    console.log('request has been received to signup: ',req.body.email);
-    var newuserobject = new User({fullname:req.body.fullname,email:req.body.email,mobile:req.body.mobile});
-    bcrypt.hash(req.body.password, 10, function(err, hash){
-        newuserobject.password = hash;
-        newuserobject.save(function(err,user){
-            if(err){
-                throw next(err);
-            }
-        });
+    //console.log('request has been received to signup: ',req.body.email);
+    User.findOne({email:req.body.email},function(err,user){
+        if(!user){
+            var newuserobject = new User({fullname:req.body.fullname,email:req.body.email,mobile:req.body.mobile});
+            bcrypt.hash(req.body.password, 10, function(err, hash){
+                newuserobject.password = hash;
+                newuserobject.merchantNumber = getUniqueMerchantNumber();
+                var objectToBeEncoded = getobjectToBeEncoded(newuserobject);
+                console.log('Object to be encoded: ',objectToBeEncoded.exp);
+                var token = jwt.encode(objectToBeEncoded,secretkey);
+                newuserobject.save(function(err,user){
+                    if(err){
+                        return next(err);
+                    }
+                });
+                res.json({token:token,data:'Congratulations, you have successfully signed up'});
+            })
+
+        }else if(err){
+            return next(err);
+        }
+        else{
+            res.json({data:'Email already in use, please use a different one'})
+        }
     })
-    var objectToBeEncoded = getobjectToBeEncoded(newuserobject);
-    console.log('Object to be encoded: '+objectToBeEncoded.exp);
-    var token = jwt.encode(objectToBeEncoded,secretkey);
-    res.json(token);
+
 
 })
 
@@ -196,7 +165,7 @@ app.post('/login',function(req,res,next){
             var token = jwt.encode(objectToBeEncoded,secretkey);
             var orderswithpayload = {};
             orderswithpayload.token =token;
-            orderswithpayload.orders = getOrdersForUser(user);
+            orderswithpayload.data = 'Congratulations, you have successfully logged in';
             res.json(orderswithpayload)
         })
     })
@@ -213,17 +182,25 @@ app.post('/saveOrdersForMerchant',ensureauthorized,function(req,res,next){
 
 });
 
-app.post('/getOrdersForMerchant',ensureauthorized,function(req,res,next){
-    Orders.find({email:req.body.email,date:req.body.date},function(err,OrdersFromDB){
+app.post('/getOrdersForMerchant',ensureauthorized,checkTokenStatus,function(req,res,next){
+    console.log('inside the getOrdersForMerchant function');
+    var token = req.header('X-Auth');
+    console.log(token);
+    var object =  jwt.decode(token,secretkey);
+    console.log('Obtained merchant number is: ',object.merchantNumber);
+    res.json({data:"Go to hell"});
+    /*Orders.find({email:req.body.email},function(err,OrdersFromDB){
         if(err){
             return next(err);
         }
         if(!OrdersFromDB){
             return res.sendStatus(401)
         }
-
-    });
+        res.json({'data':'nothing was found'})
+    });*/
 });
+
+/**********************************************************************************************************************/
 app.listen(3000,function(){
     console.log('listening on port number,',3000);
 });
