@@ -200,6 +200,10 @@ app.post('/getOrdersForMerchant',ensureauthorized,checkTokenStatus,function(req,
     });*/
 });
 
+app.post('/checkTokenExpiry',ensureauthorized,function(req,res,next){
+    res.json({data:"The token is valid and is not expired"});
+})
+
 /**********************************************************************************************************************/
 app.listen(3000,function(){
     console.log('listening on port number,',3000);
