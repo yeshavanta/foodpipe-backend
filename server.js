@@ -46,7 +46,7 @@ var jwt = require('jwt-simple');
 var app = express();
 var _ = require('lodash');
 var bcrypt = require('bcrypt');
-var User  = require('./models/user')
+var HotelProfile  = require('./models/hotelprofile')
 var Orders = require('./models/orders')
 var FlakeID = require('flake-idgen')
 var flakeidgen = new FlakeID();
@@ -56,7 +56,7 @@ app.use(require('body-parser').json());
 app.use(function(req,res,next){
     res.setHeader('Access-Control-Allow-Origin','*');
     res.setHeader('Access-Control-Allow-Methods','GET','POST');
-    res.setHeader('Access-Control-Allow-Headers','X-Requested-With,Content-Type,Authorization');
+    res.setHeader('Access-Control-Allow-Headers','X-Requested-With,Content-Type,Authorization,X-Auth');
     next();
 });
 var secretkey = 'yeshavantagiridhar';
@@ -75,11 +75,13 @@ function ensureauthorized(req,res,next){
             next();
         }else{
             // token is present but has expired
-            res.json({data:"token is present but it is expired"});
+            res.sendStatus(401);
+            console.log('The token is present but has expired');
         }
     }else{
         //token is not present at all
         res.sendStatus(401);
+        console.log('Token is not present in the request');
     }
 
 }
@@ -118,12 +120,14 @@ app.post('/restrictedresource',ensureauthorized,function(req,res){
 
 app.post('/signup',function(req,res,next){
     //console.log('request has been received to signup: ',req.body.email);
-    User.findOne({email:req.body.email},function(err,user){
+    HotelProfile.findOne({email:req.body.email},function(err,user){
         if(!user){
-            var newuserobject = new User({fullname:req.body.fullname,email:req.body.email,mobile:req.body.mobile});
+            var newuserobject = new HotelProfile({fullname:req.body.fullname,email:req.body.email,mobile:req.body.mobile});
             bcrypt.hash(req.body.password, 10, function(err, hash){
+                console.log('inside the has function');
                 newuserobject.password = hash;
                 newuserobject.merchantNumber = getUniqueMerchantNumber();
+                console.log('obtained the unique merchant ID: ',newuserobject.merchantNumber);
                 var objectToBeEncoded = getobjectToBeEncoded(newuserobject);
                 console.log('Object to be encoded: ',objectToBeEncoded.exp);
                 var token = jwt.encode(objectToBeEncoded,secretkey);
@@ -132,6 +136,7 @@ app.post('/signup',function(req,res,next){
                         return next(err);
                     }
                 });
+                console.log('sending the response back')
                 res.json({token:token,data:'Congratulations, you have successfully signed up'});
             })
 
@@ -147,7 +152,7 @@ app.post('/signup',function(req,res,next){
 })
 
 app.post('/login',function(req,res,next){
-    User.findOne({email:req.body.email},function(err, user){
+    HotelProfile.findOne({email:req.body.email},function(err, user){
         if(err){
             return next(err);
         }
@@ -156,10 +161,10 @@ app.post('/login',function(req,res,next){
         }
         bcrypt.compare(req.body.password,user.password,function(err, valid){
             if(err){
-                return next(err)
+                res.json({data:'The user does not exist, please signup'});
             }
             if(!valid){
-                return res.sendStatus(401)
+                res.json({data:'The Username or password is not valid'});
             }
             var objectToBeEncoded = getobjectToBeEncoded(user);
             var token = jwt.encode(objectToBeEncoded,secretkey);
@@ -201,8 +206,18 @@ app.post('/getOrdersForMerchant',ensureauthorized,checkTokenStatus,function(req,
 });
 
 app.post('/checkTokenExpiry',ensureauthorized,function(req,res,next){
-    res.json({data:"The token is valid and is not expired"});
+    //res.json({data:"The token is valid and is not expired"});
+    res.sendStatus(200);
 })
+
+/**********************************************************************************************************************/
+//These are the urls for mobile app
+/**********************************************************************************************************************/
+app.post('/appLaunch',function(req,res){
+
+})
+
+
 
 /**********************************************************************************************************************/
 app.listen(3000,function(){
