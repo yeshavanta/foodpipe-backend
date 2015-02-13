@@ -51,6 +51,7 @@ var Orders = require('./models/orders')
 var FlakeID = require('flake-idgen')
 var flakeidgen = new FlakeID();
 var intformat = require('biguint-format')
+var Menu = require('./models/Menu')
 
 app.use(require('body-parser').json());
 app.use(function(req,res,next){
@@ -59,24 +60,35 @@ app.use(function(req,res,next){
     res.setHeader('Access-Control-Allow-Headers','X-Requested-With,Content-Type,Authorization,X-Auth');
     next();
 });
+
+//module.exports = app;
+
+
 var secretkey = 'yeshavantagiridhar';
 
-/**********************************************************************************************************************/
+/**********************************************************************************************************************//*
+
 // All helper methods should be written in the top of this Javascript file
-/**********************************************************************************************************************/
+*/
+/**********************************************************************************************************************//*
+
+/*
+This function will check if the request is authorized, it checks if the token is present or not
+and also sees if the token is expired or not.
+ */
 
 function ensureauthorized(req,res,next){
-    var tokenfromrequest = req.header('X-Auth');
-    console.log('token obtained is: ',tokenfromrequest)
-    if(tokenfromrequest !== undefined){
-        var decodedtoken = jwt.decode(tokenfromrequest,secretkey);
-        if(decodedtoken.exp > Date.now()){
-            console.log("decoded token is, ",decodedtoken);
+    var tokenFromRequest = req.header('X-Auth');
+    console.log('token obtained is: ',tokenFromRequest)
+    if(tokenFromRequest !== undefined){
+        var decodedToken = jwt.decode(tokenFromRequest,secretkey);
+        if(decodedToken.exp > Date.now()){
+            console.log("decoded token is, ",decodedToken);
             next();
         }else{
             // token is present but has expired
             res.sendStatus(401);
-            console.log('The token is present but has expired');
+            console.log('Token is present but has expired');
         }
     }else{
         //token is not present at all
@@ -85,11 +97,21 @@ function ensureauthorized(req,res,next){
     }
 
 }
+/*
+This function generates unique merchant numbers for every request
+ */
+
 function getUniqueMerchantNumber(){
     var merchantNumber = intformat(flakeidgen.next(),'dec');
     console.log('MerchantNumber for this User is: ',merchantNumber);
     return merchantNumber;
 }
+
+
+/*
+This is the object that would be converted as a token and will be sent to Hotel owners.
+ */
+
 function getobjectToBeEncoded(newuserobject){
     var objectToBeEncoded = {};
     objectToBeEncoded.iss="foodpipe.in";
@@ -101,6 +123,10 @@ function getobjectToBeEncoded(newuserobject){
     return objectToBeEncoded;
 }
 
+/*
+This is the function that checks if the token is still valid
+ */
+
 function checkTokenStatus(req,res,next){
     console.log('Inside the checkTokenStatus');
     next();
@@ -109,10 +135,18 @@ function checkTokenStatus(req,res,next){
 function getOrdersForUser(user){
 
 }
-/**********************************************************************************************************************/
 /*
-    All the URL end points should be here
+ returns decoded token by extracting the token from header
  */
+function getDecodedXAuthTokenFromHeader(req){
+    var encodedXAuthToken = req.header('X-Auth');
+    var decodedXAuthToken = jwt.decode(encodedXAuthToken,secretkey);
+    return decodedXAuthToken;
+}
+/********************************************************************************************************************/
+//All the URL end points should be here
+/********************************************************************************************************************/
+
 app.post('/restrictedresource',ensureauthorized,function(req,res){
     //console.log('inside the restricted resource method');
     res.sendStatus(200);
@@ -170,39 +204,10 @@ app.post('/login',function(req,res,next){
             var token = jwt.encode(objectToBeEncoded,secretkey);
             var orderswithpayload = {};
             orderswithpayload.token =token;
-            orderswithpayload.data = 'Congratulations, you have successfully logged in';
+            orderswithpayload.data = objectToBeEncoded.merchantNumber;
             res.json(orderswithpayload)
         })
     })
-});
-
-app.post('/saveOrdersForMerchant',ensureauthorized,function(req,res,next){
-    var order = new Orders({email:req.body.email,date:req.body.date,orders:req.body.orders});
-    order.save(function(err,user){
-        if(err){
-            throw next(err);
-        }
-    });
-
-
-});
-
-app.post('/getOrdersForMerchant',ensureauthorized,checkTokenStatus,function(req,res,next){
-    console.log('inside the getOrdersForMerchant function');
-    var token = req.header('X-Auth');
-    console.log(token);
-    var object =  jwt.decode(token,secretkey);
-    console.log('Obtained merchant number is: ',object.merchantNumber);
-    res.json({data:"Go to hell"});
-    /*Orders.find({email:req.body.email},function(err,OrdersFromDB){
-        if(err){
-            return next(err);
-        }
-        if(!OrdersFromDB){
-            return res.sendStatus(401)
-        }
-        res.json({'data':'nothing was found'})
-    });*/
 });
 
 app.post('/checkTokenExpiry',ensureauthorized,function(req,res,next){
@@ -210,16 +215,100 @@ app.post('/checkTokenExpiry',ensureauthorized,function(req,res,next){
     res.sendStatus(200);
 })
 
-/**********************************************************************************************************************/
+app.post('/uploadMenu',ensureauthorized,function(req,res,next){
+    var menu = new Menu({
+        merchantNumber:1234,
+        menu:req.body.menu
+    });
+
+    menu.save(function(err,menu){
+        if(err){
+            res.sendStatus(500);
+            console.log('Could not save the menu due to this error',err.message);
+        }
+    })
+    res.sendStatus(200);
+})
+
+app.post('/getMenu',ensureauthorized,function(req,res,next){
+    var decodedToken = getDecodedXAuthTokenFromHeader(req);
+    var merchantNumber=decodedToken.merchantNumber;
+    Menu.findOne({merchantNumber:merchantNumber},function(err,menu){
+        if(!menu){
+            res.sendStatus(404);
+            console.log('Menu does not exist or could not fund it for customer with merchant number: ',merchantNumber);
+        }
+        if(err){
+            res.sendStatus(500);
+            console.log('Error occurred while retrieving menu for customer with merchant number: ',merchantNumber);
+        }
+        res.json(menu);
+    })
+})
+
+app.post('/uploadMenuUrl',function(req,res,next){
+    console.log('received request from front end');
+    console.log(JSON.stringify(req.body.file));
+var image = req.body.file;
+    var menu = new Menu({
+        merchantNumber:12345,
+        menu:image
+    });
+    menu.save(function(err,menu){
+        if(err){
+            res.sendStatus(500);
+            console.log('error while saving image to mongodb')
+        }
+    })
+
+    res.sendStatus(200);
+})
+
+app.get('/getMenu',function(req,res,next){
+
+})
+
+/********************************************************************************************************************/
+
 //These are the urls for mobile app
-/**********************************************************************************************************************/
+/********************************************************************************************************************/
+
 app.post('/appLaunch',function(req,res){
 
 })
 
+/********************************************************************************************************************/
 
-
-/**********************************************************************************************************************/
-app.listen(3000,function(){
+var server= app.listen(3000,function(){
     console.log('listening on port number,',3000);
 });
+var io = require('socket.io').listen(server);
+var socketToMerchantNumber = {};
+var activeSockets= [];
+
+io.on('connection',function(socket){
+    console.log('Certain socket connected with data');
+    socket.emit('news',{hello: 'world'});
+
+    socket.on('disconnect',function(){
+        console.log('certain socket is closed');
+    })
+
+    socket.on('connectingWithMerchantNumber',function(data){
+        console.log('Data received from the socket and im about to register the socket ',data.merchantNumber);
+        socketToMerchantNumber[data.merchantNumber] = socket.id;
+    })
+
+
+})
+
+
+app.post('/sendToThisMerchant',function(req,res,next){
+    console.log('entered the send to this merchant')
+    var merchantNumber = req.body.merchantNumber;
+    var socketid = socketToMerchantNumber[merchantNumber];
+    io.to(socketid).emit('messagetoyou','hello only to you');
+    console.log('sending to only me');
+    res.sendStatus(200);
+})
+

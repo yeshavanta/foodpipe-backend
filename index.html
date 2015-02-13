@@ -7,7 +7,7 @@
 
 <body ng-app='app'>
 
-<div ng-controller='HttpController as httpctrl'>
+<!--<div ng-controller='HttpController as httpctrl'>
     <div>
         <span ng-model='httpctrl.response'></span>
     </div>
@@ -15,10 +15,26 @@
         <button ng-click='httpctrl.makeCall()'>Make Call</button>
     </div>
 
+</div>-->
+
+<div ng-controller='FileUploadController as fuploadctrl'>
+    <input type="file" name="file" onchange="angular.element(this).scope().uploadFile(this.files)"/>
+    <br />
+    <!--<input type='file' file-model="myFile" />
+    <button ng-click='fuploadctrl.uploadFile()'>Upload Me</button>-->
 </div>
+<div ng-controller='SocketController as sctrl'>
+    <div id="resultArena"></div>
+    <input type="text" ng-model="sctrl.loginobject.email"/>
+    <input type="text" ng-model="sctrl.loginobject.password"/>
+    <button id="loginButton" ng-click="sctrl.login()">Login</button>
+</div>
+
 <script src=""></script>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.11/angular.min.js"></script>
+<script src="https://cdn.socket.io/socket.io-1.3.3.js"></script>
 <script>
+
     var app = angular.module('app',[]);
             app.controller('HttpController',['$scope','$http',function($scope,$http){
 
@@ -52,7 +68,75 @@
                         this.response = response.data.data;
                     });
                 }
+            }]).controller('FileUploadController',['$scope','$http',function($scope,$http){
+
+                $scope.uploadFile = function(files){
+                    var file = files[0];
+                    console.log('file is ',JSON.string(file));
+
+                    $scope.uploadFile = function(files){
+                        console.log('inside the upload file call');
+                    }
+                    var fd = new FormData();
+                    fd.append("file",file);
+
+
+                    $http.post('http://localhost:3000/uploadMenuUrl',fd,{
+                        headers:{'Content-type':undefined},
+                        transformRequest:angular.identity
+                    }).success(function(){
+                        console.log('Yaay File uploaded from the client side atleast');
+                    }).error(function(){
+                        console.log('Worst File wasn uploaded from the client side');
+                    })
+
+
+                }
+
+            }]).factory('socket',function($rootScope){
+                var socket = io.connect('http://localhost:3000');
+                return{
+                    on:function(eventName,data){
+                        socket.on(eventName,data)
+                    },
+                    emit:function(eventName,data){
+                        socket.emit(eventName,data);
+                    }
+                }
+
+            }).controller('SocketController',['socket','$http','$scope',function(socket,$http,$scope){
+                var self=this;
+
+                self.loginobject={};
+                self.loginobject.email=null;
+                self.loginobject.password=null;
+
+                self.login = function(){
+                    console.log('The obtained login details are as follows, email: '+self.loginobject.email+', password: '+self.loginobject.password)
+                    $http.post('http://localhost:3000/login',self.loginobject)
+                            .success(function(data){
+                                console.log(data);
+                                $scope.$emit('loggedInAndObtainedMerchantNumber',data);
+                            }).error(function(data){
+                                console.log(data);
+                            })
+                }
+
+                $scope.$on('loggedInAndObtainedMerchantNumber',function(event,data){
+                    console.log('Received data: ',data);
+                    socket.emit('connectingWithMerchantNumber',{
+                                merchantNumber:data.data
+                            }
+                    )
+                    console.log('Fired the socket.emit event')
+                })
+
+                socket.on('messagetoyou',function(data){
+                    console.log('obtained data for only me yaaay: ',data);
+                })
+
             }])
+
 </script>
 </body>
 </html>
