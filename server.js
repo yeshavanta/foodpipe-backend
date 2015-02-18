@@ -168,10 +168,11 @@ app.post('/signup',function(req,res,next){
                 newuserobject.save(function(err,user){
                     if(err){
                         return next(err);
+                    }else{
+                        console.log('sending the response back')
+                        res.json({token:token,data:'Congratulations, you have successfully signed up'});
                     }
                 });
-                console.log('sending the response back')
-                res.json({token:token,data:'Congratulations, you have successfully signed up'});
             })
 
         }else if(err){
@@ -186,6 +187,7 @@ app.post('/signup',function(req,res,next){
 })
 
 app.post('/login',function(req,res,next){
+    console.log('request has been received to login: ');
     HotelProfile.findOne({email:req.body.email},function(err, user){
         if(err){
             return next(err);
@@ -216,56 +218,68 @@ app.post('/checkTokenExpiry',ensureauthorized,function(req,res,next){
 })
 
 app.post('/uploadMenu',ensureauthorized,function(req,res,next){
-    var menu = new Menu({
-        merchantNumber:1234,
-        menu:req.body.menu
-    });
+    var decodedToken = getDecodedXAuthTokenFromHeader(req);
+    var merchantNumber=decodedToken.merchantNumber;
+    console.log('received request from front end to upload menu for merchant: '+merchantNumber+' and the menu is: '+JSON.stringify(req.body.menu));
 
-    menu.save(function(err,menu){
+    Menu.findOne({merchantNumber:merchantNumber},function(err,menu){
         if(err){
             res.sendStatus(500);
             console.log('Could not save the menu due to this error',err.message);
         }
+        if(!menu){
+            var menu = new Menu({
+                merchantNumber:merchantNumber,
+                menu:req.body.menu
+            });
+            menu.save(function(err,menu){
+                if(err){
+                    res.sendStatus(500);
+                    console.log('Could not save the menu due to this error',err.message);
+                }
+            })
+        }
+        else if(menu){
+            /*menu.menu = req.body.menu;
+            menu.update(function(err,menu){
+                if(err){
+                    res.sendStatus(500);
+                    console.log('Could not save the menu due to this error',err.message);
+                }
+            })
+            res.sendStatus(200);*/
+            Menu.update({merchantNumber:merchantNumber},{menu:req.body.menu},function(err,numberAffected,raw){
+                if(err){
+                    console.log('There was an error while updating the menu, please try again');
+                    res.json(500);
+                }
+                else{
+                    console.log('Number of rows affected is ',numberAffected);
+                    res.json(200);
+                }
+            })
+        }
     })
-    res.sendStatus(200);
+
+
 })
 
 app.post('/getMenu',ensureauthorized,function(req,res,next){
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
     var merchantNumber=decodedToken.merchantNumber;
+    console.log('received request from front end to get menu for merchant: ',merchantNumber);
     Menu.findOne({merchantNumber:merchantNumber},function(err,menu){
         if(!menu){
             res.sendStatus(404);
-            console.log('Menu does not exist or could not fund it for customer with merchant number: ',merchantNumber);
+            console.log('Menu does not exist or could not find it for customer with merchant number: ',merchantNumber);
         }
         if(err){
             res.sendStatus(500);
             console.log('Error occurred while retrieving menu for customer with merchant number: ',merchantNumber);
         }
-        res.json(menu);
+        console.log('sending menu: ',menu.menu);
+        res.json(menu.menu);
     })
-})
-
-app.post('/uploadMenuUrl',function(req,res,next){
-    console.log('received request from front end');
-    console.log(JSON.stringify(req.body.file));
-var image = req.body.file;
-    var menu = new Menu({
-        merchantNumber:12345,
-        menu:image
-    });
-    menu.save(function(err,menu){
-        if(err){
-            res.sendStatus(500);
-            console.log('error while saving image to mongodb')
-        }
-    })
-
-    res.sendStatus(200);
-})
-
-app.get('/getMenu',function(req,res,next){
-
 })
 
 /********************************************************************************************************************/

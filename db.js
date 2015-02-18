@@ -4,7 +4,7 @@
 var mongoose = require('mongoose');
 
 mongoose.connect('mongodb://localhost/foodpipedatabase',function(){
-    console.log('Connected to Mongodb to database Foodpipedatabase');
+        console.log('Connected to Mongodb to database Foodpipedatabase');
 })
 
 module.exports=mongoose

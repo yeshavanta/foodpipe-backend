@@ -6,7 +6,7 @@ var db = require('../db');
 
 var menu = db.model('Menu',{
     merchantNumber:Number,
-    menu:Object
+    menu:Array
 })
 
 module.exports = menu
