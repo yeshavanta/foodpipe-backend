@@ -42,8 +42,18 @@ if the header is not present it will be rejected
  */
 
 var express = require('express');
-var jwt = require('jwt-simple');
 var app = express();
+app.use(require('body-parser').json());
+app.use(function(req,res,next){
+    res.setHeader('Access-Control-Allow-Origin','*');
+    //res.setHeader('Access-Control-Allow-Credentials','true');
+    res.setHeader('Access-Control-Allow-Methods','GET','POST');
+    res.setHeader('Access-Control-Allow-Headers','X-Requested-With,Content-Type,Authorization,X-Auth');
+    next();
+});
+app.use('/mock',  express.static(__dirname + '/mock'));
+var jwt = require('jwt-simple');
+
 var _ = require('lodash');
 var bcrypt = require('bcrypt');
 var HotelProfile  = require('./models/hotelprofile')
@@ -51,18 +61,10 @@ var Orders = require('./models/orders')
 var FlakeID = require('flake-idgen')
 var flakeidgen = new FlakeID();
 var intformat = require('biguint-format')
-var Menu = require('./models/Menu')
-
-app.use(require('body-parser').json());
-app.use(function(req,res,next){
-    res.setHeader('Access-Control-Allow-Origin','*');
-    res.setHeader('Access-Control-Allow-Methods','GET','POST');
-    res.setHeader('Access-Control-Allow-Headers','X-Requested-With,Content-Type,Authorization,X-Auth');
-    next();
-});
-
-//module.exports = app;
-
+var Menu = require('./models/Menu');
+var moment = require('moment');
+var Customer = require('./models/Customer');
+var SubOrder = require('./models/SubOrder');
 
 var secretkey = 'yeshavantagiridhar';
 
@@ -79,17 +81,17 @@ and also sees if the token is expired or not.
 
 function ensureauthorized(req,res,next){
     var tokenFromRequest = req.header('X-Auth');
-    console.log('token obtained is: ',tokenFromRequest)
     if(tokenFromRequest !== undefined){
         var decodedToken = jwt.decode(tokenFromRequest,secretkey);
-        if(decodedToken.exp > Date.now()){
             console.log("decoded token is, ",decodedToken);
-            next();
-        }else{
-            // token is present but has expired
-            res.sendStatus(401);
-            console.log('Token is present but has expired');
-        }
+            if(decodedToken.exp > Date.now()){
+                console.log("decoded token is, ",decodedToken);
+                next();
+            }else{
+                // token is present but has expired
+                res.sendStatus(401);
+                console.log('Token is present but has expired');
+            }
     }else{
         //token is not present at all
         res.sendStatus(401);
@@ -109,7 +111,7 @@ function getUniqueMerchantNumber(){
 
 
 /*
-This is the object that would be converted as a token and will be sent to Hotel owners.
+This is the object that would be converted as a token and will be sent to Hotel owners. after they login
  */
 
 function getobjectToBeEncoded(newuserobject){
@@ -122,7 +124,9 @@ function getobjectToBeEncoded(newuserobject){
     console.log('Merchant number is :',objectToBeEncoded.merchantNumber);
     return objectToBeEncoded;
 }
-
+/*
+ This is the object that would be converted as a token and will be sent to customers after they login
+ */
 /*
 This is the function that checks if the token is still valid
  */
@@ -142,6 +146,23 @@ function getDecodedXAuthTokenFromHeader(req){
     var encodedXAuthToken = req.header('X-Auth');
     var decodedXAuthToken = jwt.decode(encodedXAuthToken,secretkey);
     return decodedXAuthToken;
+}
+
+function getCustomerDetails(customerNumber){
+    Customer.findOne({customerNumber:customerNumber},function(err,customer){
+        if(err){
+            return 'NOTFOUND';
+        }else{
+            return customer;
+        }
+    })
+}
+
+function getCustomerObjectToEncoded(customerObject){
+    var customerObjectToBeEncoded = customerObject;
+    customerObjectToBeEncoded.iss='foodpipe.in';
+    customerObjectToBeEncoded.exp = Date.now()+86400000;
+    return customerObjectToBeEncoded;
 }
 /********************************************************************************************************************/
 //All the URL end points should be here
@@ -169,8 +190,12 @@ app.post('/signup',function(req,res,next){
                     if(err){
                         return next(err);
                     }else{
+                        var payload = {};
+                        payload.name = req.body.fullname;
+                        payload.email = req.body.email;
+                        payload.phoneNumber = req.body.mobile;
                         console.log('sending the response back')
-                        res.json({token:token,data:'Congratulations, you have successfully signed up'});
+                        res.json({token:token,data:payload});
                     }
                 });
             })
@@ -193,21 +218,25 @@ app.post('/login',function(req,res,next){
             return next(err);
         }
         if(!user){
-            return res.sendStatus(401)
+            res.sendStatus(401)
         }
         bcrypt.compare(req.body.password,user.password,function(err, valid){
             if(err){
                 res.json({data:'The user does not exist, please signup'});
             }
-            if(!valid){
+            else if(!valid){
                 res.json({data:'The Username or password is not valid'});
+            }else{
+                var objectToBeEncoded = getobjectToBeEncoded(user);
+                var token = jwt.encode(objectToBeEncoded,secretkey);
+                console.log('The token obtained here is: ',token);
+                var payload = {};
+                payload.phoneNumber = user.mobile;
+                payload.email = user.email;
+                payload.name = user.fullname;
+                res.json({token:token,data:payload});
             }
-            var objectToBeEncoded = getobjectToBeEncoded(user);
-            var token = jwt.encode(objectToBeEncoded,secretkey);
-            var orderswithpayload = {};
-            orderswithpayload.token =token;
-            orderswithpayload.data = objectToBeEncoded.merchantNumber;
-            res.json(orderswithpayload)
+
         })
     })
 });
@@ -240,14 +269,6 @@ app.post('/uploadMenu',ensureauthorized,function(req,res,next){
             })
         }
         else if(menu){
-            /*menu.menu = req.body.menu;
-            menu.update(function(err,menu){
-                if(err){
-                    res.sendStatus(500);
-                    console.log('Could not save the menu due to this error',err.message);
-                }
-            })
-            res.sendStatus(200);*/
             Menu.update({merchantNumber:merchantNumber},{menu:req.body.menu},function(err,numberAffected,raw){
                 if(err){
                     console.log('There was an error while updating the menu, please try again');
@@ -273,49 +294,280 @@ app.post('/getMenu',ensureauthorized,function(req,res,next){
             res.sendStatus(404);
             console.log('Menu does not exist or could not find it for customer with merchant number: ',merchantNumber);
         }
-        if(err){
+        else if(err){
             res.sendStatus(500);
             console.log('Error occurred while retrieving menu for customer with merchant number: ',merchantNumber);
+        }else{
+            console.log('sending menu: ',menu.menu);
+            res.json(menu.menu);
         }
-        console.log('sending menu: ',menu.menu);
-        res.json(menu.menu);
     })
 })
 
-/********************************************************************************************************************/
-
-//These are the urls for mobile app
-/********************************************************************************************************************/
-
-app.post('/appLaunch',function(req,res){
-
-})
 
 /********************************************************************************************************************/
+// socket related things
+/********************************************************************************************************************/
 
-var server= app.listen(3000,function(){
+
+var server = app.listen(3000,function(){
     console.log('listening on port number,',3000);
 });
+
+function isSocketDisconnected(socketid){
+    var sockets = [];
+    sockets = io.sockets.sockets;
+    if(sockets.length == 0){
+        return true;
+    }
+    for(var i=0;i<sockets.length;i++){
+        if(sockets[i].id == socketid){
+            return false;
+        }
+    }
+    return true;
+}
+
+
 var io = require('socket.io').listen(server);
 var socketToMerchantNumber = {};
-var activeSockets= [];
+
 
 io.on('connection',function(socket){
     console.log('Certain socket connected with data');
     socket.emit('news',{hello: 'world'});
 
     socket.on('disconnect',function(){
-        console.log('certain socket is closed');
+        var currentSockets = [];
+        currentSockets = io.sockets.sockets;
+        console.log('size of current sockets before deleting: ',currentSockets.length);
+        for(var index in socketToMerchantNumber){
+            var socketid = socketToMerchantNumber[index];
+            if(isSocketDisconnected(socketid)){
+                console.log('socket for merchant number '+index+' is being deleted '+socketid);
+                delete socketToMerchantNumber[index];
+            }
+        }
+        console.log('size of current sockets after deleting: ',currentSockets.length);
     })
 
     socket.on('connectingWithMerchantNumber',function(data){
-        console.log('Data received from the socket and im about to register the socket ',data.merchantNumber);
+        console.log('Data received from the socket and im about to register the socket with merchant number'+data.merchantNumber+' socketid: '+socket.id);
         socketToMerchantNumber[data.merchantNumber] = socket.id;
     })
 
 
 })
 
+/********************************************************************************************************************/
+
+//These are the urls for mobile app
+/********************************************************************************************************************/
+app.post('/getPendingOrdersForToday',function(req,res,next){
+    var decodedToken = getDecodedXAuthTokenFromHeader(req);
+
+})
+
+/*
+This http post request is to accept the order, the details that needs to be sent are as follows
+{
+    orderid:orderid,
+    suborderid:suborderid,
+    customerNumber:customerNumber
+}
+ */
+app.post('/acceptSubOrder',ensureauthorized,function(req,res,next){
+    var decodedToken = getDecodedXAuthTokenFromHeader(req);
+    var orderid = req.body.orderid;
+    var suborderid = req.body.suborderid;
+    var customerNumber = req.body.customerNumber;
+
+
+    SubOrder.update({orderid:orderid,suborderid:suborderid,customerNumber:customerNumber},{status:'accepted'},function(err,numberAffected,raw){
+        if(err){
+            console.log('There was an error while accepting the order, please try again');
+            res.json(500);
+        }
+        else{
+            console.log('Number of rows affected is ',numberAffected);
+            //add code to talk to android phone here to notify that his order has been accepted.
+            res.json(200);
+        }
+    })
+})
+
+/*
+To place an order, we need to have the following arguments
+Token in the header
+{
+    merchantNumber:merchantNumber,
+    order:order,
+    orderSummary:orderSummary
+}
+ */
+app.post('/placeOrder',ensureauthorized,function(req,res,next){
+
+    var decodedToken = getDecodedXAuthTokenFromHeader(req);
+    console.log('The decoded token is: ',decodedToken);
+    var merchantNumber = req.body.merchantNumber;
+    var cNum = req.body.customerNumber;
+    console.log('Decoded customer number is: ',cNum);
+    var date = moment().format('DD-MM-YYYY');
+    var mainorderid = getUniqueMerchantNumber();
+    var mainorder = new Orders({
+        merchantNumber: merchantNumber,
+        customerNumber: cNum,
+        Date: date,
+        orderid: mainorderid,
+        status: 'notpaid'
+    });
+    console.log('Before saving the main order, Merchant Number: '+mainorder.merchantNumber+', customer number: '+mainorder.customerNumber);
+    mainorder.customerNumber = cNum;
+    console.log('cNum before assigning: ',cNum);
+    console.log('Before saving the main order and after reassigning, Merchant Number: '+mainorder.merchantNumber+', customer number: '+mainorder.customerNumber);
+    mainorder.save(function(err,order){
+        if(err){
+            console.log('Error while saving the order for customer: '+customerNumber+' and order with order id: '+mainorderid);
+            res.sendStatus(500);
+        }else{
+            console.log('Successfully saved the order, now trying to save the suborder');
+            console.log('after saving the main order, Merchant Number: '+order.merchantNumber+', customer number: '+order.customerNumber);
+            var suborderid = getUniqueMerchantNumber();
+            var suborder = new SubOrder({
+                merchantNumber:merchantNumber,
+                customerNumber:decodedToken.customerNumber,
+                orderid:mainorderid,
+                suborderid:suborderid,
+                status:'pending',
+                order:req.body.order
+            });
+            suborder.save(function(err,suborder){
+                if(err){
+                    console.log('Error while saving the suborder with id: '+suborderid+' for merchant: '+merchantNumber);
+                    res.sendStatus(500);
+                }else{
+                    console.log('Constructing the payload required by morpheus for the placed order');
+                    var payload= {};
+                    var socketid = socketToMerchantNumber[merchantNumber];
+                    var customerObject = {};
+                    customerObject.Name = decodedToken.name;
+                    customerObject.PhoneNumber = decodedToken.phoneNumber;
+                    customerObject.Email = decodedToken.email;
+                    payload.CustomerDetails = customerObject;
+                    payload.OrderSummary = req.body.orderSummary;
+                    payload.Orders = [];
+                    payload.Orders = req.body.order;
+                    payload.TimeSent = moment().format('DD-MM-YYYY');
+                    payload.Status = 'Unpaid';
+                    console.log('Placed order details are as follows: orderid:'+order.orderid+', suborder id: '+suborderid);
+                    io.to(socketid).emit('placedOrder',{payload:payload});
+                    res.sendStatus(200);
+                }
+            })
+        }
+
+    })
+})
+/*
+The request must have the following format:
+{
+    merchantNumber:merchantNumber,
+    orderid:orderid,
+    order:order ( this is an array ),
+    orderSummary:orderSummary
+}
+ */
+app.post('/appendToMainOrder',ensureauthorized,function(req,res){
+    var decodedToken = getDecodedXAuthTokenFromHeader(req);
+    var merchantNumber = req.body.merchantNumber;
+    var customerNumber = decodedToken.customerNumber;
+    var suborderid = getUniqueMerchantNumber();
+    var date = moment().format('DD-MM-YYYY');
+
+    var suborder = new SubOrder({
+        merchantNumber:merchantNumber,
+        customerNumber:customerNumber,
+        orderid:req.body.orderid,
+        suborderid:suborderid,
+        date:date,
+        status:'pending',
+        order:req.body.order
+    })
+
+    suborder.save(function(err,suborder){
+        if(err){
+            console.log('Error while saving the suborder for merchant number: '+merchantNumber+' customer number: '+customerNumber+' for main order id: '+req.body.orderid);
+            res.sendStatus(500);
+        }else{
+            console.log('Constructing the payload required by morpheus for the placed order');
+            var payload= {};
+            var socketid = socketToMerchantNumber[merchantNumber];
+            var customerObject = {};
+            customerObject.Name = decodedToken.name;
+            customerObject.PhoneNumber = decodedToken.phoneNumber;
+            customerObject.Email = decodedToken.email;
+            payload.CustomerDetails = customerObject;
+            payload.orderSummary = req.body.orderSummary;
+            payload.Orders = [];
+            payload.Orders.push(req.body.order);
+            payload.TimeSent = moment().format('DD-MM-YYYY');
+            payload.Status = 'Unpaid';
+
+            io.to(socketid).emit('placedOrder',{payload:payload});
+            res.sendStatus(200);
+        }
+    })
+
+})
+
+/*
+The customer details required to make the registration are
+name, email address and phone number.
+{
+    name:name,
+    email:email,
+    phoneNumber:phoneNumber
+}
+ */
+app.post('/registerCustomer',function(req,res,next){
+    var name = req.body.name;
+    var customerNumber = getUniqueMerchantNumber();
+    var email = req.body.email;
+    var phoneNumber = req.body.phoneNumber;
+
+    Customer.findOne({phoneNumber:phoneNumber},function(err,customer){
+        if(err){
+            console.log('Error while retrieving the customer from the DB, in registerCustomer function');
+            res.sendStatus(500);
+        }else if(!customer){
+            var newCustomer = new Customer({
+                name:name,
+                customerNumber:customerNumber,
+                phoneNumber:phoneNumber,
+                email:email
+            });
+            newCustomer.save(function(err,customer){
+                if(err){
+                    console.log('Error while saving the new customer to DB');
+                    res.sendStatus(500);
+                }else{
+                    var objectToBeEncoded = {}
+                    objectToBeEncoded.name = name;
+                    objectToBeEncoded.customerNumber = customerNumber;
+                    objectToBeEncoded.email = email;
+                    objectToBeEncoded.phoneNumber = phoneNumber;
+                    objectToBeEncoded.iss ='foodpipe.in';
+                    objectToBeEncoded.exp =Date.now()+86400000;
+                    console.log('A Customer has been created with the following customer ID ',customerNumber);
+                    var token = jwt.encode(objectToBeEncoded,secretkey);
+                    res.json({token:token,data:'Welcome'});
+                }
+            })
+        }else{
+            res.json({data:'The phone number is already registered'});
+        }
+    })
+})
 
 app.post('/sendToThisMerchant',function(req,res,next){
     console.log('entered the send to this merchant')
@@ -325,4 +577,11 @@ app.post('/sendToThisMerchant',function(req,res,next){
     console.log('sending to only me');
     res.sendStatus(200);
 })
+
+/********************************************************************************************************************/
+
+
+
+
+
 
