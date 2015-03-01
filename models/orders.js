@@ -5,9 +5,11 @@
 var db = require('../db');
 
 var orders = db.model('Orders',{
-    email:String,
-    date:String,
-    Orders:Object
+    merchantNumber:Number,
+    customerNumber:Number,
+    orderid:Number,
+    Date:String,
+    status:String
 })
 
-module.exports = orders
+module.exports = orders;
