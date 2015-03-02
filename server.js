@@ -99,13 +99,36 @@ function ensureauthorized(req,res,next){
     }
 
 }
+
 /*
-This function generates unique merchant numbers for every request
+This function generates unique numbers, and returns 16,32,64,128 bit numbers
+based on the argument passed
  */
 
+function getUniqueId(bits){
+
+    if(bits == 16 || bits == 32 || bits == 64){
+        var number = Date.now();
+        number = number & 0xffffffff;
+        if(number < 0){
+            number = number * -1;
+        }
+        return number;
+    }else{
+        var number = intformat(flakeidgen.next(),'dec');
+        return number;
+    }
+}
+/*
+This function generates unique merchant numbers for every request - 32 bit
+ */
 function getUniqueMerchantNumber(){
-    var merchantNumber = intformat(flakeidgen.next(),'dec');
-    console.log('MerchantNumber for this User is: ',merchantNumber);
+    var merchantNumber = Date.now();
+    merchantNumber = merchantNumber & 0xffffffff;
+    if(merchantNumber < 0){
+        merchantNumber = merchantNumber * -1;
+    }
+    console.log('Unique merchant number for this user is: ',merchantNumber);
     return merchantNumber;
 }
 
@@ -135,9 +158,13 @@ function checkTokenStatus(req,res,next){
     console.log('Inside the checkTokenStatus');
     next();
 }
-
-function getOrdersForUser(user){
-
+/*
+This function generates a unique 64 bit number to be assigned to a merchant
+ */
+function getUniqueCustomerNumber(){
+    var customerNumber = intformat(flakeidgen.next(),'dec');
+    console.log('customerNumber for this User is: ',customerNumber);
+    return customerNumber;
 }
 /*
  returns decoded token by extracting the token from header
@@ -181,7 +208,7 @@ app.post('/signup',function(req,res,next){
             bcrypt.hash(req.body.password, 10, function(err, hash){
                 console.log('inside the has function');
                 newuserobject.password = hash;
-                newuserobject.merchantNumber = getUniqueMerchantNumber();
+                newuserobject.merchantNumber = getUniqueId(64);
                 console.log('obtained the unique merchant ID: ',newuserobject.merchantNumber);
                 var objectToBeEncoded = getobjectToBeEncoded(newuserobject);
                 console.log('Object to be encoded: ',objectToBeEncoded.exp);
@@ -234,6 +261,7 @@ app.post('/login',function(req,res,next){
                 payload.phoneNumber = user.mobile;
                 payload.email = user.email;
                 payload.name = user.fullname;
+                payload.merchantNumber = objectToBeEncoded.merchantNumber;
                 res.json({token:token,data:payload});
             }
 
@@ -334,7 +362,7 @@ var socketToMerchantNumber = {};
 
 
 io.on('connection',function(socket){
-    console.log('Certain socket connected with data');
+    console.log('Certain socket connected with socketId: ',socket.id);
     socket.emit('news',{hello: 'world'});
 
     socket.on('disconnect',function(){
@@ -348,7 +376,7 @@ io.on('connection',function(socket){
                 delete socketToMerchantNumber[index];
             }
         }
-        console.log('size of current sockets after deleting: ',currentSockets.length);
+        //console.log('size of current sockets after deleting: ',currentSockets.length);
     })
 
     socket.on('connectingWithMerchantNumber',function(data){
@@ -383,7 +411,7 @@ app.post('/acceptSubOrder',ensureauthorized,function(req,res,next){
     var customerNumber = req.body.customerNumber;
 
 
-    SubOrder.update({orderid:orderid,suborderid:suborderid,customerNumber:customerNumber},{status:'accepted'},function(err,numberAffected,raw){
+    SubOrder.update({orderid:orderid,suborderid:suborderid},{status:'accepted'},function(err,numberAffected,raw){
         if(err){
             console.log('There was an error while accepting the order, please try again');
             res.json(500);
@@ -398,48 +426,46 @@ app.post('/acceptSubOrder',ensureauthorized,function(req,res,next){
 
 /*
 To place an order, we need to have the following arguments
-Token in the header
+Token in the header and the following json to be sent
 {
     merchantNumber:merchantNumber,
     order:order,
     orderSummary:orderSummary
 }
  */
-app.post('/placeOrder',ensureauthorized,function(req,res,next){
+app.post('/placeOrder',ensureauthorized,function(req,res,next)//noinspection BadExpressionStatementJS
+{
 
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
     console.log('The decoded token is: ',decodedToken);
+    var customerNumber = req.body.customerNumber;
     var merchantNumber = req.body.merchantNumber;
-    var cNum = req.body.customerNumber;
-    console.log('Decoded customer number is: ',cNum);
     var date = moment().format('DD-MM-YYYY');
-    var mainorderid = getUniqueMerchantNumber();
+    var mainorderid = getUniqueId(32);
+    console.log('obtained mainorder id is: ',mainorderid);
     var mainorder = new Orders({
         merchantNumber: merchantNumber,
-        customerNumber: cNum,
+        customerNumber:customerNumber,
         Date: date,
         orderid: mainorderid,
         status: 'notpaid'
     });
-    console.log('Before saving the main order, Merchant Number: '+mainorder.merchantNumber+', customer number: '+mainorder.customerNumber);
-    mainorder.customerNumber = cNum;
-    console.log('cNum before assigning: ',cNum);
-    console.log('Before saving the main order and after reassigning, Merchant Number: '+mainorder.merchantNumber+', customer number: '+mainorder.customerNumber);
     mainorder.save(function(err,order){
         if(err){
-            console.log('Error while saving the order for customer: '+customerNumber+' and order with order id: '+mainorderid);
+            console.log('Error while saving the order with order id: '+mainorderid);
             res.sendStatus(500);
         }else{
             console.log('Successfully saved the order, now trying to save the suborder');
-            console.log('after saving the main order, Merchant Number: '+order.merchantNumber+', customer number: '+order.customerNumber);
-            var suborderid = getUniqueMerchantNumber();
+            var suborderid = getUniqueId(32);
+            console.log('obtained suborder id is: ',suborderid);
             var suborder = new SubOrder({
                 merchantNumber:merchantNumber,
-                customerNumber:decodedToken.customerNumber,
+                customerNumber:customerNumber,
                 orderid:mainorderid,
                 suborderid:suborderid,
                 status:'pending',
-                order:req.body.order
+                order:req.body.order,
+                orderSummary:req.body.orderSummary
             });
             suborder.save(function(err,suborder){
                 if(err){
@@ -453,19 +479,20 @@ app.post('/placeOrder',ensureauthorized,function(req,res,next){
                     customerObject.Name = decodedToken.name;
                     customerObject.PhoneNumber = decodedToken.phoneNumber;
                     customerObject.Email = decodedToken.email;
+                    customerObject.customerNumber = decodedToken.customerNumber;
                     payload.CustomerDetails = customerObject;
+                    payload.OrderSummary = {};
                     payload.OrderSummary = req.body.orderSummary;
                     payload.Orders = [];
                     payload.Orders = req.body.order;
                     payload.TimeSent = moment().format('DD-MM-YYYY');
                     payload.Status = 'Unpaid';
-                    console.log('Placed order details are as follows: orderid:'+order.orderid+', suborder id: '+suborderid);
+                    //console.log('Placed order details are as follows: orderid:'+order.orderid+', suborder id: '+suborderid);
                     io.to(socketid).emit('placedOrder',{payload:payload});
                     res.sendStatus(200);
                 }
             })
         }
-
     })
 })
 /*
@@ -531,7 +558,8 @@ name, email address and phone number.
  */
 app.post('/registerCustomer',function(req,res,next){
     var name = req.body.name;
-    var customerNumber = getUniqueMerchantNumber();
+    var customerNumber = getUniqueId(32);
+    console.log('Customer Number obtained for this user is ',customerNumber);
     var email = req.body.email;
     var phoneNumber = req.body.phoneNumber;
 
@@ -551,7 +579,7 @@ app.post('/registerCustomer',function(req,res,next){
                     console.log('Error while saving the new customer to DB');
                     res.sendStatus(500);
                 }else{
-                    var objectToBeEncoded = {}
+                    var objectToBeEncoded = {};
                     objectToBeEncoded.name = name;
                     objectToBeEncoded.customerNumber = customerNumber;
                     objectToBeEncoded.email = email;
