@@ -476,6 +476,7 @@ app.post('/placeOrder',ensureauthorized,function(req,res,next)//noinspection Bad
                     var payload= {};
                     var socketid = socketToMerchantNumber[merchantNumber];
                     var customerObject = {};
+                    var orderids = {};
                     customerObject.Name = decodedToken.name;
                     customerObject.PhoneNumber = decodedToken.phoneNumber;
                     customerObject.Email = decodedToken.email;
@@ -487,6 +488,9 @@ app.post('/placeOrder',ensureauthorized,function(req,res,next)//noinspection Bad
                     payload.Orders = req.body.order;
                     payload.TimeSent = moment().format('DD-MM-YYYY');
                     payload.Status = 'Unpaid';
+                    orderids.suborderid = suborderid;
+                    orderids.orderid = mainorderid;
+                    payload.orderDetails = orderids;
                     //console.log('Placed order details are as follows: orderid:'+order.orderid+', suborder id: '+suborderid);
                     io.to(socketid).emit('placedOrder',{payload:payload});
                     res.sendStatus(200);
