@@ -533,6 +533,7 @@ app.post('/appendToMainOrder',ensureauthorized,function(req,res){
             customerObject.Name = decodedToken.name;
             customerObject.PhoneNumber = decodedToken.phoneNumber;
             customerObject.Email = decodedToken.email;
+            customerObject.customerNumber = decodedToken.customerNumber;
             payload.CustomerDetails = customerObject;
             payload.orderSummary = req.body.orderSummary;
             payload.Orders = [];

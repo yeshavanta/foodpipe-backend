@@ -24,122 +24,208 @@
     <button ng-click='fuploadctrl.uploadFile()'>Upload Me</button>-->
 </div>
 <div ng-controller='SocketController as sctrl'>
-    <div id="resultArena"></div>
+    <div id="resultArena" ng-bind="sctrl.textarearesult"></div>
     <input type="text" ng-model="sctrl.loginobject.email"/>
     <input type="text" ng-model="sctrl.loginobject.password"/>
     <button id="loginButton" ng-click="sctrl.login()">Login</button>
+    <button id="getMenuButton" ng-click="sctrl.getmenu()">getMenu</button>
+    <button id="getDateButton" ng-click="sctrl.getDate()">getDate</button>
+    <button id="readjson" ng-click="sctrl.readJson()">getJson</button>
+    <button id="placeorder" ng-click="sctrl.placeOrder()">placeOrder</button>
+    <button id="acceptorder" ng-click="sctrl.acceptOrder()">acceptOrder</button>
 </div>
 
-<script src=""></script>
+<script src="bower_components/moment/moment.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.11/angular.min.js"></script>
 <script src="https://cdn.socket.io/socket.io-1.3.3.js"></script>
 <script>
 
     var app = angular.module('app',[]);
-            app.controller('HttpController',['$scope','$http',function($scope,$http){
+    app.controller('HttpController',['$scope','$http',function($scope,$http){
 
-                var self = this;
-                var response;
+        var self = this;
+        var response;
 
-                this.makeCall = function(){
-                    console.log('Inside the makeCall function');
+        this.makeCall = function(){
+            console.log('Inside the makeCall function');
 
-                    var dataObjectForSignup ={
-                        email:'hello1445@gmail.com',
-                        fullname:'hello',
-                        password:'rasengan',
-                        mobile:'9986809811'
-                    };
+            var dataObjectForSignup ={
+                email:'hello1445@gmail.com',
+                fullname:'hello',
+                password:'rasengan',
+                mobile:'9986809811'
+            };
 
-                    var dataObjectForTokenVerify ={
-                        token:''
-                    }
-                    var req = {
-                        method: 'POST',
-                        url: 'http://localhost:3000/checkTokenExpiry',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyMzE1MjMzNTk5OSwiZW1haWwiOiJsb3ZlbGxlc3NhZ2FpbkBnbWFpbC5jb20iLCJtb2JpbGUiOiI5NDQ4NDE1NzE1IiwibWVyY2hhbnROdW1iZXIiOjU5Njg3NzExNDc2MjAxNTUwMDB9.h9Lep3EFBrtcPqMoV1vX8UQ1fxCQZTy0oSm7vQ4L7Yw'
-                        }
-                        //data:dataObjectForTokenVerify
-                    };
-
-                    $http(req).then(function(response){
-                        this.response = response.data.data;
-                    });
+            var dataObjectForTokenVerify ={
+                token:''
+            }
+            var req = {
+                method: 'POST',
+                url: 'http://localhost:3000/checkTokenExpiry',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyMzE1MjMzNTk5OSwiZW1haWwiOiJsb3ZlbGxlc3NhZ2FpbkBnbWFpbC5jb20iLCJtb2JpbGUiOiI5NDQ4NDE1NzE1IiwibWVyY2hhbnROdW1iZXIiOjU5Njg3NzExNDc2MjAxNTUwMDB9.h9Lep3EFBrtcPqMoV1vX8UQ1fxCQZTy0oSm7vQ4L7Yw'
                 }
-            }]).controller('FileUploadController',['$scope','$http',function($scope,$http){
+                //data:dataObjectForTokenVerify
+            };
 
-                $scope.uploadFile = function(files){
-                    var file = files[0];
-                    console.log('file is ',JSON.string(file));
+            $http(req).then(function(response){
+                this.response = response.data.data;
+            });
+        }
+    }]).controller('FileUploadController',['$scope','$http',function($scope,$http){
 
-                    $scope.uploadFile = function(files){
-                        console.log('inside the upload file call');
-                    }
-                    var fd = new FormData();
-                    fd.append("file",file);
+        $scope.uploadFile = function(files){
+            var file = files[0];
+            console.log('file is ',JSON.string(file));
+
+            $scope.uploadFile = function(files){
+                console.log('inside the upload file call');
+            }
+            var fd = new FormData();
+            fd.append("file",file);
 
 
-                    $http.post('http://localhost:3000/uploadMenuUrl',fd,{
-                        headers:{'Content-type':undefined},
-                        transformRequest:angular.identity
-                    }).success(function(){
-                        console.log('Yaay File uploaded from the client side atleast');
-                    }).error(function(){
-                        console.log('Worst File wasn uploaded from the client side');
+            $http.post('http://localhost:3000/uploadMenuUrl',fd,{
+                headers:{'Content-type':undefined},
+                transformRequest:angular.identity
+            }).success(function(){
+                console.log('Yaay File uploaded from the client side atleast');
+            }).error(function(){
+                console.log('Worst File wasn uploaded from the client side');
+            })
+
+
+        }
+
+    }]).factory('socket',function($rootScope){
+        var socket = io.connect('http://localhost:3000');
+        return{
+            on:function(eventName,data){
+                socket.on(eventName,data)
+            },
+            emit:function(eventName,data){
+                socket.emit(eventName,data);
+            }
+        }
+
+    }).controller('SocketController',['socket','$http','$scope','$filter',function(socket,$http,$scope,$filter){
+        var self=this;
+        self.textarearesult = null;
+        self.loginobject={};
+        self.loginobject.email=null;
+        self.loginobject.password=null;
+
+        self.login = function(){
+            console.log('The obtained login details are as follows, email: '+self.loginobject.email+', password: '+self.loginobject.password)
+            $http.post('http://localhost:3000/login',self.loginobject)
+                    .success(function(data){
+                        console.log(data);
+                        $scope.$emit('loggedInAndObtainedMerchantNumber',data);
+                    }).error(function(data){
+                        console.log(data);
                     })
+        }
 
+        self.getmenu = function(){
+            console.log('inside the get menu');
+            var req = {
+                method: 'POST',
+                url: 'http://localhost:3000/getMenu',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNDM3MDk2NTg0MiwiZW1haWwiOiJnaXJpQGdtYWlsLmNvbSIsIm1vYmlsZSI6Ijk3NDAzMzU4MTciLCJtZXJjaGFudE51bWJlciI6NTk3Mzg4MjQ1MTY0OTM2NDAwMH0.53Kk3-a9S_3sKzM968P7BCLZ-5zMMGRlOq6i3mBbNWw'
 
                 }
+            };
 
-            }]).factory('socket',function($rootScope){
-                var socket = io.connect('http://localhost:3000');
-                return{
-                    on:function(eventName,data){
-                        socket.on(eventName,data)
-                    },
-                    emit:function(eventName,data){
-                        socket.emit(eventName,data);
+            $http(req).success(function(data){
+                console.log(data);
+            }).error(function(data){
+                console.log(data);
+            })
+        }
+
+        self.readJson = function(){
+            console.log('inside the read json function');
+            $http.get('./mock/mock-date.json')
+                    .success(function(data){
+                        self.textarearesult = data;
+                        var json = data;
+                        console.log(json[0].Name);
+                    }).error(function(data){
+
+                    })
+        }
+
+        self.getDate = function(){
+            var datebyangular = Date.now();
+            var dateinmyformat = $filter('date')(datebyangular,"dd/MM/yyyy");
+            dateinmyformat = moment().format('DD-MM-YYYY');
+            self.textarearesult = dateinmyformat;
+        }
+
+        self.placeOrder = function(){
+            var order = {};
+            order.merchantNumber=620636464;
+            order.order = [{"items":[{"itemname":"pulao","itemprice":27,"itemquantity":2},{"itemname":"paneer","itemprice":27,"itemquantity":2},{"itemname":"Choley Bhatura","itemprice":27,"itemquantity":2}]}];
+            order.orderSummary = {"Total":2345,"TotalQuantity":12};
+            var req = {
+                method: 'POST',
+                url: 'http://localhost:3000/placeOrder',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoiZ2lyaSIsImN1c3RvbWVyTnVtYmVyIjo1MzM1MjExMTIsImVtYWlsIjoiZ2lyaUBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk3Njg5ODc2NjUiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ4MjAyMTIzMn0.fYFFc2F3EsBhkETStuc-NpzKv8t3g5BN2fVwhdNeZ5k'
+                },
+                data:order
+            };
+            $http(req).success(function(response){
+                console.log('yaaay');
+            }).error(function(response){
+                console.log('error happened: ',response);
+            })
+        }
+
+
+        self.acceptOrder = function(){
+            var order = {};
+            order.orderid=533363992;
+            order.suborderid = 533363985;
+            order.merchantNumber = 620636464;
+            var req = {
+                method: 'POST',
+                url: 'http://localhost:3000/acceptSubOrder',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoiZ2lyaSIsImN1c3RvbWVyTnVtYmVyIjo1MzM1MjExMTIsImVtYWlsIjoiZ2lyaUBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk3Njg5ODc2NjUiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ4MjAyMTIzMn0.fYFFc2F3EsBhkETStuc-NpzKv8t3g5BN2fVwhdNeZ5k'
+                },
+                data:order
+            };
+            $http(req).success(function(response){
+                console.log('yaaay');
+            }).error(function(response){
+                console.log('error happened: ',response);
+            })
+        }
+
+        $scope.$on('loggedInAndObtainedMerchantNumber',function(event,data){
+            console.log('Received data: ',data);
+            socket.emit('connectingWithMerchantNumber',{
+                        merchantNumber:data.data
                     }
-                }
+            )
+            console.log('Fired the socket.emit event')
+        })
 
-            }).controller('SocketController',['socket','$http','$scope',function(socket,$http,$scope){
-                var self=this;
+        socket.on('messagetoyou',function(data){
+            console.log('obtained data for only me yaaay: ',data);
+        })
 
-                self.loginobject={};
-                self.loginobject.email=null;
-                self.loginobject.password=null;
+        socket.on('hellofromlogin',function(data){
+            console.log('obtained data for only me yaaay again: ',data);
+        })
 
-                self.login = function(){
-                    console.log('The obtained login details are as follows, email: '+self.loginobject.email+', password: '+self.loginobject.password)
-                    $http.post('http://localhost:3000/login',self.loginobject)
-                            .success(function(data){
-                                console.log(data);
-                                $scope.$emit('loggedInAndObtainedMerchantNumber',data);
-                            }).error(function(data){
-                                console.log(data);
-                            })
-                }
-
-                $scope.$on('loggedInAndObtainedMerchantNumber',function(event,data){
-                    console.log('Received data: ',data);
-                    socket.emit('connectingWithMerchantNumber',{
-                                merchantNumber:data.data
-                            }
-                    )
-                    console.log('Fired the socket.emit event')
-                })
-
-                socket.on('messagetoyou',function(data){
-                    console.log('obtained data for only me yaaay: ',data);
-                })
-
-                socket.on('hellofromlogin',function(data){
-                    console.log('obtained data for only me yaaay again: ',data);
-                })
-
-            }])
+    }])
 
 </script>
 </body>
