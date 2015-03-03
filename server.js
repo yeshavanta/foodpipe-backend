@@ -391,9 +391,60 @@ io.on('connection',function(socket){
 
 //These are the urls for mobile app
 /********************************************************************************************************************/
-app.post('/getPendingOrdersForToday',function(req,res,next){
-    var decodedToken = getDecodedXAuthTokenFromHeader(req);
 
+/*
+This URL is to obtain the orders in that particular day
+{
+    "status":"pending/accepted"
+}
+
+ */
+app.post('/getPendingOrdersForToday',ensureauthorized,function(req,res,next){
+    var decodedToken = getDecodedXAuthTokenFromHeader(req);
+    var status = req.body.status;
+    var date = moment().format('DD-MM-YYYY');
+    SubOrder.find({date:date,status:status},function(err,suborders){
+        if(err){
+            console.log('error while obtaining logs from the server');
+            res.sendStatus(500);
+        }else if(suborders){
+            var finalPayload = [];
+            var counter=0;
+            for(var index=0;index<suborders.length;index++) {
+                var suborder = {};
+                suborder = suborders[index];
+//                var customer = getCustomerDetails(suborder.customerNumber);
+                Customer.findOne({customerNumber: suborder.customerNumber},function (err, customer) {
+                        if (err) {
+                            return 'NOTFOUND';
+                        } else {
+                            counter = counter+1;
+                            var payload = {};
+                            var customerObject = {};
+                            var orderids = {};
+                            customerObject.Name = customer.name;
+                            customerObject.PhoneNumber = customer.phoneNumber;
+                            customerObject.Email = customer.email;
+                            customerObject.customerNumber = customer.customerNumber;
+                            payload.CustomerDetails = customerObject;
+                            payload.OrderSummary = {};
+                            payload.OrderSummary = suborder.orderSummary;
+                            payload.Orders = [];
+                            payload.Orders = suborder.order;
+                            payload.TimeSent = suborder.date;
+                            payload.Status = suborder.status;
+                            orderids.suborderid = suborder.suborderid;
+                            orderids.orderid = suborder.orderid;
+                            payload.orderDetails = orderids;
+                            finalPayload.push(payload);
+                            if(counter == suborders.length){
+                                res.json({payload:finalPayload});
+                            }
+                        }
+                    })
+            }
+        }
+    });
 })
 
 /*
@@ -438,7 +489,7 @@ app.post('/placeOrder',ensureauthorized,function(req,res,next)//noinspection Bad
 
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
     console.log('The decoded token is: ',decodedToken);
-    var customerNumber = req.body.customerNumber;
+    var customerNumber = decodedToken.customerNumber;
     var merchantNumber = req.body.merchantNumber;
     var date = moment().format('DD-MM-YYYY');
     var mainorderid = getUniqueId(32);
@@ -465,7 +516,8 @@ app.post('/placeOrder',ensureauthorized,function(req,res,next)//noinspection Bad
                 suborderid:suborderid,
                 status:'pending',
                 order:req.body.order,
-                orderSummary:req.body.orderSummary
+                orderSummary:req.body.orderSummary,
+                date:date
             });
             suborder.save(function(err,suborder){
                 if(err){

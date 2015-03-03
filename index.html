@@ -33,6 +33,7 @@
     <button id="readjson" ng-click="sctrl.readJson()">getJson</button>
     <button id="placeorder" ng-click="sctrl.placeOrder()">placeOrder</button>
     <button id="acceptorder" ng-click="sctrl.acceptOrder()">acceptOrder</button>
+    <button id="pendingorder" ng-click="sctrl.getPendingOrders()">pendingOrder</button>
 </div>
 
 <script src="bower_components/moment/moment.js"></script>
@@ -168,14 +169,14 @@
         self.placeOrder = function(){
             var order = {};
             order.merchantNumber=620636464;
-            order.order = [{"items":[{"itemname":"pulao","itemprice":27,"itemquantity":2},{"itemname":"paneer","itemprice":27,"itemquantity":2},{"itemname":"Choley Bhatura","itemprice":27,"itemquantity":2}]}];
+            order.order = [{"items":[{"itemname":"orderfromyesh","itemprice":27,"itemquantity":2}]}];
             order.orderSummary = {"Total":2345,"TotalQuantity":12};
             var req = {
                 method: 'POST',
                 url: 'http://localhost:3000/placeOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoiZ2lyaSIsImN1c3RvbWVyTnVtYmVyIjo1MzM1MjExMTIsImVtYWlsIjoiZ2lyaUBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk3Njg5ODc2NjUiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ4MjAyMTIzMn0.fYFFc2F3EsBhkETStuc-NpzKv8t3g5BN2fVwhdNeZ5k'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo1MTg2NzkxOTUsImVtYWlsIjoieWVzaEBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk5ODY4MDkxODgiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ5Njg2MzA4N30.YBWhlbVrEU08CQCMuzz1ryTMgPaf7fxvCkqqRFGNruo'
                 },
                 data:order
             };
@@ -189,8 +190,8 @@
 
         self.acceptOrder = function(){
             var order = {};
-            order.orderid=533363992;
-            order.suborderid = 533363985;
+            order.orderid=517840225;
+            order.suborderid = 517840212;
             order.merchantNumber = 620636464;
             var req = {
                 method: 'POST',
@@ -205,6 +206,26 @@
                 console.log('yaaay');
             }).error(function(response){
                 console.log('error happened: ',response);
+            })
+        }
+
+        self.getPendingOrders = function(){
+            var data = {};
+            data.status = 'accepted';
+            var req = {
+                method: 'POST',
+                url: 'http://localhost:3000/getPendingOrdersForToday',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ5Mzg0NDMwNywiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.KbwJG_w23dMjVOVVSvjxmO2aDM9CA9EuaRMjKmFZd10'
+                },
+                data:data
+            };
+
+            $http(req).success(function(response){
+                console.log(response);
+            }).error(function(response){
+                console.log(response);
             })
         }
 
