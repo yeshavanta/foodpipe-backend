@@ -400,10 +400,12 @@ This URL is to obtain the orders in that particular day
 
  */
 app.post('/getPendingOrdersForToday',ensureauthorized,function(req,res,next){
+    console.log('received call to get the pending orders for today');
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
+    var merchantNumber = decodedToken.merchantNumber;
     var status = req.body.status;
     var date = moment().format('DD-MM-YYYY');
-    SubOrder.find({date:date,status:status},function(err,suborders){
+    SubOrder.find({date:date,status:status,merchantNumber:merchantNumber},function(err,suborders){
         if(err){
             console.log('error while obtaining logs from the server');
             res.sendStatus(500);
@@ -452,17 +454,18 @@ This http post request is to accept the order, the details that needs to be sent
 {
     orderid:orderid,
     suborderid:suborderid,
-    customerNumber:customerNumber
+    customerNumber:customerNumber,
+    status:accept/reject
 }
  */
-app.post('/acceptSubOrder',ensureauthorized,function(req,res,next){
+app.post('/acceptOrRejectSubOrder',ensureauthorized,function(req,res,next){
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
     var orderid = req.body.orderid;
     var suborderid = req.body.suborderid;
     var customerNumber = req.body.customerNumber;
+    var acceptOrReject = request.body.status;
 
-
-    SubOrder.update({orderid:orderid,suborderid:suborderid},{status:'accepted'},function(err,numberAffected,raw){
+    SubOrder.update({orderid:orderid,suborderid:suborderid},{status:acceptOrReject},function(err,numberAffected,raw){
         if(err){
             console.log('There was an error while accepting the order, please try again');
             res.json(500);

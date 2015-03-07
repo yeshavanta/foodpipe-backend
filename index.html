@@ -34,6 +34,7 @@
     <button id="placeorder" ng-click="sctrl.placeOrder()">placeOrder</button>
     <button id="acceptorder" ng-click="sctrl.acceptOrder()">acceptOrder</button>
     <button id="pendingorder" ng-click="sctrl.getPendingOrders()">pendingOrder</button>
+    <button id="registerCustomer" ng-click="sctrl.registerCustomer()">registerCustomer</button>
 </div>
 
 <script src="bower_components/moment/moment.js"></script>
@@ -176,7 +177,7 @@
                 url: 'http://localhost:3000/placeOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo1MTg2NzkxOTUsImVtYWlsIjoieWVzaEBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk5ODY4MDkxODgiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ5Njg2MzA4N30.YBWhlbVrEU08CQCMuzz1ryTMgPaf7fxvCkqqRFGNruo'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaGF2YW50YSIsImN1c3RvbWVyTnVtYmVyIjoyNTc1NDk4MTIsImVtYWlsIjoieWFzaEBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk5ODc4OTA5ODgiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTc1Nzk5MjQ4NH0.aXtMITou2me-HA-wPAw6-NZlqRwOR6lq1NslPtzOpY4'
                 },
                 data:order
             };
@@ -217,7 +218,7 @@
                 url: 'http://localhost:3000/getPendingOrdersForToday',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ5Mzg0NDMwNywiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.KbwJG_w23dMjVOVVSvjxmO2aDM9CA9EuaRMjKmFZd10'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTY2ODk5OTAzOSwiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.Exs8o2GL8H2A2RIkt5xIrBv19DaD35KUMgA8Gajbitw'
                 },
                 data:data
             };
@@ -227,6 +228,20 @@
             }).error(function(response){
                 console.log(response);
             })
+        }
+
+        self.registerCustomer = function(){
+            var data = {};
+            data.name = 'yeshavanta';
+            data.email = 'yash@gmail.com';
+            data.phoneNumber = '9987890988';
+
+            $http.post('http://localhost:3000/registerCustomer',data)
+                    .success(function(response){
+                       console.log('Yaaay: ',response);
+                    }).error(function(response){
+                        console.log('Shucks lol Giri: ',response);
+                    });
         }
 
         $scope.$on('loggedInAndObtainedMerchantNumber',function(event,data){
