@@ -177,7 +177,7 @@
                 url: 'http://localhost:3000/placeOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaGF2YW50YSIsImN1c3RvbWVyTnVtYmVyIjoyNTc1NDk4MTIsImVtYWlsIjoieWFzaEBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk5ODc4OTA5ODgiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTc1Nzk5MjQ4NH0.aXtMITou2me-HA-wPAw6-NZlqRwOR6lq1NslPtzOpY4'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaGF2YW50YSIsImN1c3RvbWVyTnVtYmVyIjoxMDQxMDU5MDEsImVtYWlsIjoieWFzaEBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6IjY3NTYzNDU2NzgiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTkxMTQzNjQxNH0.nAj3CfOw9vz-NDevSXyEQ0oi39ZkhqPCvore1g3vWNA'
                 },
                 data:order
             };
@@ -191,15 +191,16 @@
 
         self.acceptOrder = function(){
             var order = {};
-            order.orderid=517840225;
-            order.suborderid = 517840212;
+            order.orderid=103699329;
+            order.suborderid = 103699324;
             order.merchantNumber = 620636464;
+            order.status="accept";
             var req = {
                 method: 'POST',
-                url: 'http://localhost:3000/acceptSubOrder',
+                url: 'http://localhost:3000/acceptOrRejectSubOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoiZ2lyaSIsImN1c3RvbWVyTnVtYmVyIjo1MzM1MjExMTIsImVtYWlsIjoiZ2lyaUBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6Ijk3Njg5ODc2NjUiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTQ4MjAyMTIzMn0.fYFFc2F3EsBhkETStuc-NpzKv8t3g5BN2fVwhdNeZ5k'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTkxMTY5Njk3NywiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.u-eh95ScyT_DeiakmHsJFOydc6MIp1RWcSSCKsr9fOY'
                 },
                 data:order
             };
@@ -212,13 +213,13 @@
 
         self.getPendingOrders = function(){
             var data = {};
-            data.status = 'accepted';
+            data.status = 'pending';
             var req = {
                 method: 'POST',
                 url: 'http://localhost:3000/getPendingOrdersForToday',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTY2ODk5OTAzOSwiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.Exs8o2GL8H2A2RIkt5xIrBv19DaD35KUMgA8Gajbitw'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTkxMTY5Njk3NywiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.u-eh95ScyT_DeiakmHsJFOydc6MIp1RWcSSCKsr9fOY'
                 },
                 data:data
             };
@@ -234,7 +235,7 @@
             var data = {};
             data.name = 'yeshavanta';
             data.email = 'yash@gmail.com';
-            data.phoneNumber = '9987890988';
+            data.phoneNumber = '6756345678';
 
             $http.post('http://localhost:3000/registerCustomer',data)
                     .success(function(response){

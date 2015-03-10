@@ -380,8 +380,8 @@ io.on('connection',function(socket){
     })
 
     socket.on('connectingWithMerchantNumber',function(data){
-        console.log('Data received from the socket and im about to register the socket with merchant number'+data.merchantNumber+' socketid: '+socket.id);
-        socketToMerchantNumber[data.merchantNumber] = socket.id;
+        console.log('Data received from the socket and im about to register the socket with merchant number'+data.merchantNumber.merchantNumber+'with socketid: '+socket.id);
+        socketToMerchantNumber[data.merchantNumber.merchantNumber] = socket.id;
     })
 
 
@@ -391,7 +391,18 @@ io.on('connection',function(socket){
 
 //These are the urls for mobile app
 /********************************************************************************************************************/
+/*
+This URL is to get the final bill for that particular order
+{
+    "orderid":"orderid"
+}
+ */
 
+app.post('/getBill',ensureauthorized,function(req,res,next){
+    var mainorderid = req.body.orderid;
+    console.log('received request to obtain bill for the particular order: ',mainorderid);
+    
+})
 /*
 This URL is to obtain the orders in that particular day
 {
@@ -459,11 +470,12 @@ This http post request is to accept the order, the details that needs to be sent
 }
  */
 app.post('/acceptOrRejectSubOrder',ensureauthorized,function(req,res,next){
+    console.log('received the request to accept/reject a suborder');
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
     var orderid = req.body.orderid;
     var suborderid = req.body.suborderid;
     var customerNumber = req.body.customerNumber;
-    var acceptOrReject = request.body.status;
+    var acceptOrReject = req.body.status;
 
     SubOrder.update({orderid:orderid,suborderid:suborderid},{status:acceptOrReject},function(err,numberAffected,raw){
         if(err){
