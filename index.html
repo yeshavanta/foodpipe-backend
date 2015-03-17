@@ -35,6 +35,7 @@
     <button id="acceptorder" ng-click="sctrl.acceptOrder()">acceptOrder</button>
     <button id="pendingorder" ng-click="sctrl.getPendingOrders()">pendingOrder</button>
     <button id="registerCustomer" ng-click="sctrl.registerCustomer()">registerCustomer</button>
+    <button id="sendNotification" ng-click="sctrl.sendNotification()">sendNotification</button>
 </div>
 
 <script src="bower_components/moment/moment.js"></script>
@@ -170,14 +171,14 @@
         self.placeOrder = function(){
             var order = {};
             order.merchantNumber=620636464;
-            order.order = [{"items":[{"itemname":"orderfromyesh","itemprice":27,"itemquantity":2}]}];
+            order.order = [{"items":[{"itemname":"orderfromyeshagain","itemprice":270,"itemquantity":22}]}];
             order.orderSummary = {"Total":2345,"TotalQuantity":12};
             var req = {
                 method: 'POST',
                 url: 'http://localhost:3000/placeOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaGF2YW50YSIsImN1c3RvbWVyTnVtYmVyIjoxMDQxMDU5MDEsImVtYWlsIjoieWFzaEBnbWFpbC5jb20iLCJwaG9uZU51bWJlciI6IjY3NTYzNDU2NzgiLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTkxMTQzNjQxNH0.nAj3CfOw9vz-NDevSXyEQ0oi39ZkhqPCvore1g3vWNA'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo2NTcxOTc3MzgsImVtYWlsIjoieWVzQGdtYWlsLmNvbSIsInBob25lTnVtYmVyIjoiOTk4NjgwOTE4OCIsImlzcyI6ImZvb2RwaXBlLmluIiwiZXhwIjoxNDI2NjcyNzQwMDMxfQ.J98dvnSw89o2j1-s9J-0SgauvnQjTnzeot1PuNskxKI'
                 },
                 data:order
             };
@@ -233,13 +234,24 @@
 
         self.registerCustomer = function(){
             var data = {};
-            data.name = 'yeshavanta';
-            data.email = 'yash@gmail.com';
-            data.phoneNumber = '6756345678';
+            data.name = 'yesh';
+            data.email = 'yes@gmail.com';
+            data.phoneNumber = '9986809188';
 
             $http.post('http://localhost:3000/registerCustomer',data)
                     .success(function(response){
                        console.log('Yaaay: ',response);
+                    }).error(function(response){
+                        console.log('Shucks lol Giri: ',response);
+                    });
+        }
+
+        self.sendNotification = function(){
+            var data = {};
+            data.customerNumber = 408624045;
+            $http.post('http://localhost:3000/sendNotification',data)
+                    .success(function(response){
+                        console.log('Yaaay: ',response);
                     }).error(function(response){
                         console.log('Shucks lol Giri: ',response);
                     });

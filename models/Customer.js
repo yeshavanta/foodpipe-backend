@@ -8,7 +8,8 @@ var Customer = db.model('Customer',{
     customerNumber:Number,
     name:String,
     phoneNumber:String,
-    email:String
+    email:String,
+    gcmRegId:String
 })
 
 module.exports = Customer;

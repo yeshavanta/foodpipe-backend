@@ -6,7 +6,7 @@ var db = require('../db');
 
 var suborder = db.model('suborder',{
     merchantNumber:Number,
-    customerNumber:Number,
+    customer:Object,
     orderid:Number,
     suborderid:Number,
     status:String,

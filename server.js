@@ -53,7 +53,7 @@ app.use(function(req,res,next){
 });
 app.use('/mock',  express.static(__dirname + '/mock'));
 var jwt = require('jwt-simple');
-
+var q = require('q');
 var _ = require('lodash');
 var bcrypt = require('bcrypt');
 var HotelProfile  = require('./models/hotelprofile')
@@ -67,7 +67,7 @@ var Customer = require('./models/Customer');
 var SubOrder = require('./models/SubOrder');
 
 var secretkey = 'yeshavantagiridhar';
-
+var gcm = require('node-gcm');
 /**********************************************************************************************************************//*
 
 // All helper methods should be written in the top of this Javascript file
@@ -392,16 +392,63 @@ io.on('connection',function(socket){
 //These are the urls for mobile app
 /********************************************************************************************************************/
 /*
-This URL is to get the final bill for that particular order
-{
-    "orderid":"orderid"
-}
+Sending notifications to the mobile app
+ */
+app.post('/sendNotification',function(req,res,next){
+    console.log('inside the send Notification part');
+    var customerNumber = req.body.customerNumber;
+    Customer.findOne({customerNumber:customerNumber},function(err,customer){
+        var regId = customer.gcmRegId;
+        var message = new gcm.Message({
+            collapseKey: 'demo',
+            delayWhileIdle: true,
+            timeToLive: 3,
+            data: {
+                key1: 'Hello'
+            }
+        });
+        var sender = new gcm.Sender('AIzaSyByCmHXrGS53IMCQpY6Vv_Csl0Yu7vb-P8');
+        var registrationIds = [];
+        //registrationIds.push('APA91bEp4ge85-_h79M8Hw0AdcGOQKapuqdTTt9GYEDXm80b2aWaV1PX20iUzEWFJ1ZpQ-Sjiw5mazwv3oEjXjoUtLHKijAP7UCzyuzmFaKSL-lpZz72-gSn5HUO79MkI_GtIzU0jx5V8YwJZ8a4mWg9S-DWdhEOZcvtW4B8jC3x6LmUYYg7Ei0');
+        registrationIds.push(regId);
+        sender.send(message,registrationIds,2,function(err,result){
+            if(err) console.error(err);
+            else    console.log(result);
+        })
+    })
+})
+
+/*
+This is to register a gcm client so that we can send notifications to it later on.
  */
 
+app.post('/registerForProject',function(req,res,next){
+    console.log('received request to register the android client');
+    var customerNumber = req.body.customerNumber;
+    var regId = req.body.regId;
+    Customer.update({customerNumber:customerNumber},{gcmRegId:regId},function(err,numberAffected,raw){
+        if(err){
+            console.log('There was an error while accepting the order, please try again');
+            throw new Error('Unable to register for the project currently');
+        }
+        else{
+            console.log('Number of rows affected is ',numberAffected);
+            res.json({data:"thanks for calling me"});
+            //add code to talk to android phone here to notify that his order has been accepted.
+            res.json(200);
+        }
+    })
+
+})
+/*
+ This URL is to get the final bill for that particular order
+ {
+ "orderid":"orderid"
+ }
+ */
 app.post('/getBill',ensureauthorized,function(req,res,next){
     var mainorderid = req.body.orderid;
     console.log('received request to obtain bill for the particular order: ',mainorderid);
-    
 })
 /*
 This URL is to obtain the orders in that particular day
@@ -410,51 +457,49 @@ This URL is to obtain the orders in that particular day
 }
 
  */
-app.post('/getPendingOrdersForToday',ensureauthorized,function(req,res,next){
+app.post('/getPendingOrdersForToday',function(req,res,next){
     console.log('received call to get the pending orders for today');
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
-    var merchantNumber = decodedToken.merchantNumber;
+    var merchantNumber = 620636464;
     var status = req.body.status;
     var date = moment().format('DD-MM-YYYY');
-    SubOrder.find({date:date,status:status,merchantNumber:merchantNumber},function(err,suborders){
+    SubOrder.find({status:status,merchantNumber:merchantNumber,date:date},function(err,suborders){
         if(err){
             console.log('error while obtaining logs from the server');
             res.sendStatus(500);
-        }else if(suborders){
+        }else if(suborders.length == 0){
+            console.log('There are no orders to return');
+            var finalPayload = [];
+            res.json(finalPayload);
+        }else{
             var finalPayload = [];
             var counter=0;
             for(var index=0;index<suborders.length;index++) {
                 var suborder = {};
                 suborder = suborders[index];
-//                var customer = getCustomerDetails(suborder.customerNumber);
-                Customer.findOne({customerNumber: suborder.customerNumber},function (err, customer) {
-                        if (err) {
-                            return 'NOTFOUND';
-                        } else {
-                            counter = counter+1;
-                            var payload = {};
-                            var customerObject = {};
-                            var orderids = {};
-                            customerObject.Name = customer.name;
-                            customerObject.PhoneNumber = customer.phoneNumber;
-                            customerObject.Email = customer.email;
-                            customerObject.customerNumber = customer.customerNumber;
-                            payload.CustomerDetails = customerObject;
-                            payload.OrderSummary = {};
-                            payload.OrderSummary = suborder.orderSummary;
-                            payload.Orders = [];
-                            payload.Orders = suborder.order;
-                            payload.TimeSent = suborder.date;
-                            payload.Status = suborder.status;
-                            orderids.suborderid = suborder.suborderid;
-                            orderids.orderid = suborder.orderid;
-                            payload.orderDetails = orderids;
-                            finalPayload.push(payload);
-                            if(counter == suborders.length){
-                                res.json({payload:finalPayload});
-                            }
-                        }
-                    })
+                counter = counter+1;
+                var payload = {};
+                var customerObject = {};
+                var orderids = {};
+                var customer = suborder.customer;
+                customerObject.Name = customer.name;
+                customerObject.PhoneNumber = customer.phoneNumber;
+                customerObject.Email = customer.email;
+                customerObject.customerNumber = customer.customerNumber;
+                payload.CustomerDetails = customerObject;
+                payload.OrderSummary = {};
+                payload.OrderSummary = suborder.orderSummary;
+                payload.Orders = [];
+                payload.Orders = suborder.order;
+                payload.TimeSent = suborder.date;
+                payload.Status = suborder.status;
+                orderids.suborderid = suborder.suborderid;
+                orderids.orderid = suborder.orderid;
+                payload.orderDetails = orderids;
+                finalPayload.push(payload);
+                if(counter == suborders.length){
+                    res.json({payload:finalPayload});
+                }
             }
         }
     });
@@ -501,7 +546,6 @@ Token in the header and the following json to be sent
  */
 app.post('/placeOrder',ensureauthorized,function(req,res,next)//noinspection BadExpressionStatementJS
 {
-
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
     console.log('The decoded token is: ',decodedToken);
     var customerNumber = decodedToken.customerNumber;
@@ -509,58 +553,66 @@ app.post('/placeOrder',ensureauthorized,function(req,res,next)//noinspection Bad
     var date = moment().format('DD-MM-YYYY');
     var mainorderid = getUniqueId(32);
     console.log('obtained mainorder id is: ',mainorderid);
-    var mainorder = new Orders({
-        merchantNumber: merchantNumber,
-        customerNumber:customerNumber,
-        Date: date,
-        orderid: mainorderid,
-        status: 'notpaid'
-    });
-    mainorder.save(function(err,order){
+    Customer.findOne({customerNumber:customerNumber},function(err,customer){
         if(err){
-            console.log('Error while saving the order with order id: '+mainorderid);
+            console.log('Unable to find this particular customer to place the order, ensure that the customer is registered');
             res.sendStatus(500);
-        }else{
-            console.log('Successfully saved the order, now trying to save the suborder');
-            var suborderid = getUniqueId(32);
-            console.log('obtained suborder id is: ',suborderid);
-            var suborder = new SubOrder({
-                merchantNumber:merchantNumber,
+        }
+        else{
+            var mainorder = new Orders({
+                merchantNumber: merchantNumber,
                 customerNumber:customerNumber,
-                orderid:mainorderid,
-                suborderid:suborderid,
-                status:'pending',
-                order:req.body.order,
-                orderSummary:req.body.orderSummary,
-                date:date
+                Date: date,
+                orderid: mainorderid,
+                status: 'notpaid'
             });
-            suborder.save(function(err,suborder){
+            mainorder.save(function(err,order){
                 if(err){
-                    console.log('Error while saving the suborder with id: '+suborderid+' for merchant: '+merchantNumber);
+                    console.log('Error while saving the order with order id: '+mainorderid);
                     res.sendStatus(500);
                 }else{
-                    console.log('Constructing the payload required by morpheus for the placed order');
-                    var payload= {};
-                    var socketid = socketToMerchantNumber[merchantNumber];
-                    var customerObject = {};
-                    var orderids = {};
-                    customerObject.Name = decodedToken.name;
-                    customerObject.PhoneNumber = decodedToken.phoneNumber;
-                    customerObject.Email = decodedToken.email;
-                    customerObject.customerNumber = decodedToken.customerNumber;
-                    payload.CustomerDetails = customerObject;
-                    payload.OrderSummary = {};
-                    payload.OrderSummary = req.body.orderSummary;
-                    payload.Orders = [];
-                    payload.Orders = req.body.order;
-                    payload.TimeSent = moment().format('DD-MM-YYYY');
-                    payload.Status = 'Unpaid';
-                    orderids.suborderid = suborderid;
-                    orderids.orderid = mainorderid;
-                    payload.orderDetails = orderids;
-                    //console.log('Placed order details are as follows: orderid:'+order.orderid+', suborder id: '+suborderid);
-                    io.to(socketid).emit('placedOrder',{payload:payload});
-                    res.sendStatus(200);
+                    console.log('Successfully saved the order, now trying to save the suborder');
+                    var suborderid = getUniqueId(32);
+                    console.log('obtained suborder id is: ',suborderid);
+                    var suborder = new SubOrder({
+                        merchantNumber:merchantNumber,
+                        customer:customer,
+                        orderid:mainorderid,
+                        suborderid:suborderid,
+                        status:'pending',
+                        order:req.body.order,
+                        orderSummary:req.body.orderSummary,
+                        date:date
+                    });
+                    suborder.save(function(err,suborder){
+                        if(err){
+                            console.log('Error while saving the suborder with id: '+suborderid+' for merchant: '+merchantNumber);
+                            res.sendStatus(500);
+                        }else{
+                            console.log('Constructing the payload required by morpheus for the placed order');
+                            var payload= {};
+                            var socketid = socketToMerchantNumber[merchantNumber];
+                            var customerObject = {};
+                            var orderids = {};
+                            customerObject.Name = decodedToken.name;
+                            customerObject.PhoneNumber = decodedToken.phoneNumber;
+                            customerObject.Email = decodedToken.email;
+                            customerObject.customerNumber = decodedToken.customerNumber;
+                            payload.CustomerDetails = customerObject;
+                            payload.OrderSummary = {};
+                            payload.OrderSummary = req.body.orderSummary;
+                            payload.Orders = [];
+                            payload.Orders = req.body.order;
+                            payload.TimeSent = moment().format('DD-MM-YYYY');
+                            payload.Status = 'Unpaid';
+                            orderids.suborderid = suborderid;
+                            orderids.orderid = mainorderid;
+                            payload.orderDetails = orderids;
+                            console.log('Placed order details are as follows: orderid:'+order.orderid+', suborder id: '+suborderid);
+                            io.to(socketid).emit('placedOrder',{payload:payload});
+                            res.sendStatus(200);
+                        }
+                    })
                 }
             })
         }
