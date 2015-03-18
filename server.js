@@ -457,10 +457,10 @@ This URL is to obtain the orders in that particular day
 }
 
  */
-app.post('/getPendingOrdersForToday',function(req,res,next){
+app.post('/getPendingOrdersForToday',ensureauthorized,function(req,res,next){
     console.log('received call to get the pending orders for today');
     var decodedToken = getDecodedXAuthTokenFromHeader(req);
-    var merchantNumber = 620636464;
+    var merchantNumber = decodedToken.merchantNumber;
     var status = req.body.status;
     var date = moment().format('DD-MM-YYYY');
     SubOrder.find({status:status,merchantNumber:merchantNumber,date:date},function(err,suborders){
