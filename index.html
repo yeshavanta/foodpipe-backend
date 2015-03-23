@@ -33,9 +33,12 @@
     <button id="readjson" ng-click="sctrl.readJson()">getJson</button>
     <button id="placeorder" ng-click="sctrl.placeOrder()">placeOrder</button>
     <button id="acceptorder" ng-click="sctrl.acceptOrder()">acceptOrder</button>
+    <button id="appendOrder" ng-click="sctrl.appendOrder()">appendOrder</button>
     <button id="pendingorder" ng-click="sctrl.getPendingOrders()">pendingOrder</button>
+    <button id="getBill" ng-click="sctrl.getBill()">getBill</button>
     <button id="registerCustomer" ng-click="sctrl.registerCustomer()">registerCustomer</button>
     <button id="sendNotification" ng-click="sctrl.sendNotification()">sendNotification</button>
+    <button id="getBillMorpheus" ng-click="sctrl.getBillMorpheus()">getBillMorpheus</button>
 </div>
 
 <script src="bower_components/moment/moment.js"></script>
@@ -149,6 +152,28 @@
             })
         }
 
+        self.getBill = function(){
+            var data = {};
+            data.orderid = 1030218905;
+            console.log('inside the get bill');
+            var req = {
+                method: 'POST',
+                url: 'http://localhost:3000/getBill',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo4NjAyOTE1MzQsImVtYWlsIjoieWVzQGdtYWlsLmNvbSIsInBob25lTnVtYmVyIjoiOTk4NjgwOTE4OCIsImlzcyI6ImZvb2RwaXBlLmluIiwiZXhwIjoxNDI2ODc1ODMzODQ1fQ.j0yJju2-L2NdqV3iC14fqDLFlHUAkI9GQ4JCdHN0Urc'
+
+                },
+                data:data
+            };
+
+            $http(req).success(function(data){
+                console.log(data);
+            }).error(function(data){
+                console.log(data);
+            })
+        }
+
         self.readJson = function(){
             console.log('inside the read json function');
             $http.get('./mock/mock-date.json')
@@ -178,7 +203,7 @@
                 url: 'http://localhost:3000/placeOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo2NTcxOTc3MzgsImVtYWlsIjoieWVzQGdtYWlsLmNvbSIsInBob25lTnVtYmVyIjoiOTk4NjgwOTE4OCIsImlzcyI6ImZvb2RwaXBlLmluIiwiZXhwIjoxNDI2NjcyNzQwMDMxfQ.J98dvnSw89o2j1-s9J-0SgauvnQjTnzeot1PuNskxKI'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo4NjAyOTE1MzQsImVtYWlsIjoieWVzQGdtYWlsLmNvbSIsInBob25lTnVtYmVyIjoiOTk4NjgwOTE4OCIsImlzcyI6ImZvb2RwaXBlLmluIiwiZXhwIjoxNDI2ODc1ODMzODQ1fQ.j0yJju2-L2NdqV3iC14fqDLFlHUAkI9GQ4JCdHN0Urc'
                 },
                 data:order
             };
@@ -189,6 +214,36 @@
             })
         }
 
+        self.appendOrder = function(){
+            var order = {};
+            order.merchantNumber=620636464;
+            order.order = [{"items":[{"itemname":"appendingorder","itemprice":221,"itemquantity":2}]}];
+            order.orderSummary = {"Total":2345,"TotalQuantity":12};
+            order.orderid = 1030297276;
+            var req = {
+                method: 'POST',
+                url: 'http://localhost:3000/placeOrder',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo4NjAyOTE1MzQsImVtYWlsIjoieWVzQGdtYWlsLmNvbSIsInBob25lTnVtYmVyIjoiOTk4NjgwOTE4OCIsImlzcyI6ImZvb2RwaXBlLmluIiwiZXhwIjoxNDI2ODc1ODMzODQ1fQ.j0yJju2-L2NdqV3iC14fqDLFlHUAkI9GQ4JCdHN0Urc'
+                },
+                data:order
+            };
+            $http(req).success(function(response){
+                console.log('yaaay');
+            }).error(function(response){
+                console.log('error happened: ',response);
+            })
+        }
+
+        self.getBillMorpheus = function(){
+            $http.post('http://localhost:3000/getTodaysBillForMorpheus')
+                    .success(function(response){
+                        console.log('Yaaay: ',response);
+                    }).error(function(response){
+                        console.log('Shucks lol Giri: ',response);
+                    });
+        }
 
         self.acceptOrder = function(){
             var order = {};
@@ -217,10 +272,10 @@
             data.status = 'pending';
             var req = {
                 method: 'POST',
-                url: 'http://localhost:3000/getPendingOrdersForToday',
+                url: 'http://localhost:3000/getOrdersForToday',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTkxMTY5Njk3NywiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.u-eh95ScyT_DeiakmHsJFOydc6MIp1RWcSSCKsr9fOY'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo4NjAyOTE1MzQsImVtYWlsIjoieWVzQGdtYWlsLmNvbSIsInBob25lTnVtYmVyIjoiOTk4NjgwOTE4OCIsImlzcyI6ImZvb2RwaXBlLmluIiwiZXhwIjoxNDI2ODc1ODMzODQ1fQ.j0yJju2-L2NdqV3iC14fqDLFlHUAkI9GQ4JCdHN0Urc'
                 },
                 data:data
             };

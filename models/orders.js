@@ -9,7 +9,8 @@ var orders = db.model('Orders',{
     customerNumber:Number,
     orderid:Number,
     Date:String,
-    status:String
+    status:String,
+    suborderids:Array
 })
 
 module.exports = orders;
