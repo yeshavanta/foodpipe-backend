@@ -68,6 +68,8 @@ var SubOrder = require('./models/SubOrder');
 
 var secretkey = 'yeshavantagiridhar';
 var gcm = require('node-gcm');
+
+app.use(express.static(__dirname + '/public'));
 /**********************************************************************************************************************/
 
 /*
@@ -835,3 +837,7 @@ app.post('/sendToThisMerchant',function(req,res,next){
 })
 
 /********************************************************************************************************************/
+
+app.get('/index.html',function(req,res,next){
+    res.sendfile('index.html');
+})
