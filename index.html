@@ -203,7 +203,7 @@
                 url: 'http://localhost:3000/placeOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjo4NjAyOTE1MzQsImVtYWlsIjoieWVzQGdtYWlsLmNvbSIsInBob25lTnVtYmVyIjoiOTk4NjgwOTE4OCIsImlzcyI6ImZvb2RwaXBlLmluIiwiZXhwIjoxNDI2ODc1ODMzODQ1fQ.j0yJju2-L2NdqV3iC14fqDLFlHUAkI9GQ4JCdHN0Urc'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjoxMTgyMDI3NzkxLCJlbWFpbCI6Inllc0BnbWFpbC5jb20iLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyOTEyODQ4MTc4OCwiaXNNb2JpbGUiOjF9.c_0A0Q20xRA_2NCfe6Lf4hZsL0zxEZQ40lGm2Gdxxqk'
                 },
                 data:order
             };
@@ -247,8 +247,8 @@
 
         self.acceptOrder = function(){
             var order = {};
-            order.orderid=103699329;
-            order.suborderid = 103699324;
+            order.orderid=1181884328;
+            order.suborderid = 1181884323;
             order.merchantNumber = 620636464;
             order.status="accept";
             var req = {
@@ -256,7 +256,7 @@
                 url: 'http://localhost:3000/acceptOrRejectSubOrder',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyNTkxMTY5Njk3NywiZW1haWwiOiJidWdAZ21haWwuY29tIiwibW9iaWxlIjoiODc2NTY3NTQzMyIsIm1lcmNoYW50TnVtYmVyIjo2MjA2MzY0NjR9.u-eh95ScyT_DeiakmHsJFOydc6MIp1RWcSSCKsr9fOY'
+                    'X-Auth':'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoieWVzaCIsImN1c3RvbWVyTnVtYmVyIjoxMTgyMDI3NzkxLCJlbWFpbCI6Inllc0BnbWFpbC5jb20iLCJpc3MiOiJmb29kcGlwZS5pbiIsImV4cCI6MTQyOTEyODQ4MTc4OCwiaXNNb2JpbGUiOjF9.c_0A0Q20xRA_2NCfe6Lf4hZsL0zxEZQ40lGm2Gdxxqk'
                 },
                 data:order
             };
@@ -291,7 +291,7 @@
             var data = {};
             data.name = 'yesh';
             data.email = 'yes@gmail.com';
-            data.phoneNumber = '9986809188';
+            data.profile = 'facebook';
 
             $http.post('http://localhost:3000/registerCustomer',data)
                     .success(function(response){

@@ -85,6 +85,7 @@ function ensureauthorized(req,res,next){
     if(tokenFromRequest !== undefined){
         var decodedToken = jwt.decode(tokenFromRequest,secretkey);
             console.log("decoded token is, ",decodedToken);
+        if(decodedToken.isMobile === undefined){
             if(decodedToken.exp > Date.now()){
                 console.log("decoded token is, ",decodedToken);
                 next();
@@ -93,12 +94,14 @@ function ensureauthorized(req,res,next){
                 res.sendStatus(401);
                 console.log('Token is present but has expired');
             }
+        }else{
+            next();
+        }
     }else{
         //token is not present at all
         res.sendStatus(401);
         console.log('Token is not present in the request');
     }
-
 }
 
 /*
@@ -455,20 +458,12 @@ app.post('/getTodaysBillForMorpheus',ensureauthorized,function(req,res,next){
                 SubOrder.find({suborderid:{$in:orders[counter].suborderids}},function(err,suborders){
                     var order = orders[counter];
                     var data =buildOrder(suborders,order.orderid);
+                    data.customer = suborders[0].customer;
                     newpayload.push(data);
                     counter = counter+1;
                     if(counter==orders.length){
                         res.json({payload:newpayload});
                     }
-
-                    /*console.log('Obtained Suborders are as follows: ',suborders);
-                    for(var suborderindex = 0;suborderindex<suborders.length;suborderindex++){
-                        counter = counter +1;
-                        payload.push(suborders[suborderindex]);
-                        if(counter == suborders.length * orders.length){
-                            res.json({data:payload,hello:newpayload});
-                        }
-                    }*/
                 });
 
             }
@@ -602,6 +597,7 @@ app.post('/getBill',ensureauthorized,function(req,res,next){
            res.sendStatus(500);
        }else if(suborders.length > 0){
            payload=buildOrder(suborders,orderid);
+           payload.customer = suborders[0].customer;
            res.json({payload:payload});
        }else{
            console.log('Unable to find any order with this particular order id: ',orderid);
@@ -769,26 +765,42 @@ name, email address and phone number.
 {
     name:name,
     email:email,
-    phoneNumber:phoneNumber
+    profile:(local/facebook/google),
+    userid:userid
 }
  */
 app.post('/registerCustomer',function(req,res,next){
     var name = req.body.name;
-    var customerNumber = getUniqueId(32);
-    console.log('Customer Number obtained for this user is ',customerNumber);
     var email = req.body.email;
-    var phoneNumber = req.body.phoneNumber;
+    var profile = req.body.profile;
 
-    Customer.findOne({phoneNumber:phoneNumber},function(err,customer){
+    Customer.findOne({email:email},function(err,customer){
         if(err){
             console.log('Error while retrieving the customer from the DB, in registerCustomer function');
             res.sendStatus(500);
+        }else if(customer){
+            var profileFromDB = customer.profile;
+            if(profileFromDB !== profile){
+                res.json({data:"User has already signed up with this email id using the profile: "+profileFromDB});
+            }else{
+                console.log('About to send the information back to customer');
+                var objectToBeEncoded = {};
+                objectToBeEncoded.name = customer.name;
+                objectToBeEncoded.customerNumber = customer.customerNumber;
+                objectToBeEncoded.email = customer.email;
+                objectToBeEncoded.iss ='foodpipe.in';
+                objectToBeEncoded.isMobile=1;
+                var token = jwt.encode(objectToBeEncoded,secretkey);
+                res.json({token:token,data:'Welcome'});
+            }
         }else if(!customer){
+            var customerNumber = getUniqueId(32);
             var newCustomer = new Customer({
                 name:name,
                 customerNumber:customerNumber,
-                phoneNumber:phoneNumber,
-                email:email
+                profile:profile,
+                email:email,
+                userid:req.body.userid
             });
             newCustomer.save(function(err,customer){
                 if(err){
@@ -799,16 +811,16 @@ app.post('/registerCustomer',function(req,res,next){
                     objectToBeEncoded.name = name;
                     objectToBeEncoded.customerNumber = customerNumber;
                     objectToBeEncoded.email = email;
-                    objectToBeEncoded.phoneNumber = phoneNumber;
                     objectToBeEncoded.iss ='foodpipe.in';
                     objectToBeEncoded.exp =Date.now()+86400000;
+                    objectToBeEncoded.isMobile=1;
                     console.log('A Customer has been created with the following customer ID ',customerNumber);
                     var token = jwt.encode(objectToBeEncoded,secretkey);
                     res.json({token:token,data:'Welcome'});
                 }
             })
         }else{
-            res.json({data:'The phone number is already registered'});
+            res.json({data:'The email address is already registered'});
         }
     })
 })
@@ -823,9 +835,3 @@ app.post('/sendToThisMerchant',function(req,res,next){
 })
 
 /********************************************************************************************************************/
-
-
-
-
-
-
