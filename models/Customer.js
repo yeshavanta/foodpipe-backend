@@ -10,7 +10,7 @@ var Customer = db.model('Customer',{
     email:String,
     gcmRegId:String,
     profile:String,
-    userid:String
+    password:String
 })
 
 module.exports = Customer;

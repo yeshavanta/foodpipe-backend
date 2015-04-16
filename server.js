@@ -2,43 +2,43 @@
  * Created by ykp on 1/18/2015.
  */
 /*
-Here for now consider User as Merchant, i will implement the notificaiton mechanism later
+ Here for now consider User as Merchant, i will implement the notificaiton mechanism later
 
-Currently assume that the worflow is like this
+ Currently assume that the worflow is like this
 
---> Customer orders and it comes to morpheus
---> Morpheus then sends the data and this is in turn stored in DB
+ --> Customer orders and it comes to morpheus
+ --> Morpheus then sends the data and this is in turn stored in DB
 
-functionalities:
+ functionalities:
 
-/signin:
+ /signin:
 
-The moment a user ( for now user means Hotel Owner ), a token is generated with a timestamp and is returned to him
+ The moment a user ( for now user means Hotel Owner ), a token is generated with a timestamp and is returned to him
 
-/login:
+ /login:
 
-The moment a user logs in, a token is generated and also orders for him on that particular day is returned to him
+ The moment a user logs in, a token is generated and also orders for him on that particular day is returned to him
 
-/saveOrdersForMerchant:
+ /saveOrdersForMerchant:
 
-The moment you call this url, the order you sent in a json format , it is stored in DB
+ The moment you call this url, the order you sent in a json format , it is stored in DB
 
-Format of Json to be sent to save in server
+ Format of Json to be sent to save in server
  {
  email:String(email of the merchant or the hotel owner),
  date:String(in DD-MM-YYYY format),
  Orders:Object
  }
 
-/getOrdersForMerchant:
+ /getOrdersForMerchant:
 
-The moment you call this URL, the orders for this merchant whose email, and the date you have specified will be returned.
+ The moment you call this URL, the orders for this merchant whose email, and the date you have specified will be returned.
 
 
-for the last two urls please include the token in the header with key as
-X-Auth
+ for the last two urls please include the token in the header with key as
+ X-Auth
 
-if the header is not present it will be rejected
+ if the header is not present it will be rejected
  */
 
 var express = require('express');
@@ -53,7 +53,6 @@ app.use(function(req,res,next){
 });
 app.use('/mock',  express.static(__dirname + '/mock'));
 var jwt = require('jwt-simple');
-var q = require('q');
 var _ = require('lodash');
 var bcrypt = require('bcrypt');
 var HotelProfile  = require('./models/hotelprofile')
@@ -71,22 +70,19 @@ var gcm = require('node-gcm');
 
 app.use(express.static(__dirname + '/public'));
 /**********************************************************************************************************************/
-
 /*
-// All helper methods should be written in the top of this Javascript file
-*/
-/**********************************************************************************************************************/
-
-/*
-This function will check if the request is authorized, it checks if the token is present or not
-and also sees if the token is expired or not.
+ // All helper methods should be written in the top of this Javascript file
  */
-
+/**********************************************************************************************************************/
+/*
+ This function will check if the request is authorized, it checks if the token is present or not
+ and also sees if the token is expired or not.
+ */
 function ensureauthorized(req,res,next){
     var tokenFromRequest = req.header('X-Auth');
     if(tokenFromRequest !== undefined){
         var decodedToken = jwt.decode(tokenFromRequest,secretkey);
-            console.log("decoded token is, ",decodedToken);
+        console.log("decoded token is, ",decodedToken);
         if(decodedToken.isMobile === undefined){
             if(decodedToken.exp > Date.now()){
                 console.log("decoded token is, ",decodedToken);
@@ -107,8 +103,8 @@ function ensureauthorized(req,res,next){
 }
 
 /*
-This function generates unique numbers, and returns 16,32,64,128 bit numbers
-based on the argument passed
+ This function generates unique numbers, and returns 16,32,64,128 bit numbers
+ based on the argument passed
  */
 
 function getUniqueId(bits){
@@ -126,7 +122,7 @@ function getUniqueId(bits){
     }
 }
 /*
-This function generates unique merchant numbers for every request - 32 bit
+ This function generates unique merchant numbers for every request - 32 bit
  */
 function getUniqueMerchantNumber(){
     var merchantNumber = Date.now();
@@ -140,7 +136,7 @@ function getUniqueMerchantNumber(){
 
 
 /*
-This is the object that would be converted as a token and will be sent to Hotel owners. after they login
+ This is the object that would be converted as a token and will be sent to Hotel owners. after they login
  */
 
 function getobjectToBeEncoded(newuserobject){
@@ -157,7 +153,7 @@ function getobjectToBeEncoded(newuserobject){
  This is the object that would be converted as a token and will be sent to customers after they login
  */
 /*
-This is the function that checks if the token is still valid
+ This is the function that checks if the token is still valid
  */
 
 function checkTokenStatus(req,res,next){
@@ -165,7 +161,7 @@ function checkTokenStatus(req,res,next){
     next();
 }
 /*
-This function generates a unique 64 bit number to be assigned to a merchant
+ This function generates a unique 64 bit number to be assigned to a merchant
  */
 function getUniqueCustomerNumber(){
     var customerNumber = intformat(flakeidgen.next(),'dec');
@@ -192,7 +188,7 @@ function getCustomerDetails(customerNumber){
 }
 
 /*
-Constructs the single order object from suborders so that the final order can be built based on weder its for
+ Constructs the single order object from suborders so that the final order can be built based on weder its for
  mobile app or morpheus
  */
 
@@ -480,7 +476,7 @@ app.post('/getTodaysBillForMorpheus',ensureauthorized,function(req,res,next){
 /********************************************************************************************************************/
 
 
-var server = app.listen(3000,function(){
+var server = app.listen( process.env.PORT || 3000,function(){
     console.log('listening on port number,',3000);
 });
 
@@ -534,7 +530,7 @@ io.on('connection',function(socket){
 //These are the urls for mobile app
 /********************************************************************************************************************/
 /*
-Sending notifications to the mobile app
+ Sending notifications to the mobile app
  */
 app.post('/sendNotification',function(req,res,next){
     console.log('inside the send Notification part');
@@ -561,7 +557,7 @@ app.post('/sendNotification',function(req,res,next){
 })
 
 /*
-This is to register a gcm client so that we can send notifications to it later on.
+ This is to register a gcm client so that we can send notifications to it later on.
  */
 
 app.post('/registerForProject',function(req,res,next){
@@ -594,31 +590,31 @@ app.post('/getBill',ensureauthorized,function(req,res,next){
     var orderid = req.body.orderid;
     var payload = {};
     SubOrder.find({orderid:orderid},function(err,suborders){
-       if(err){
-           console.log('Some error while accessing the the database');
-           res.sendStatus(500);
-       }else if(suborders.length > 0){
-           payload=buildOrder(suborders,orderid);
-           payload.customer = suborders[0].customer;
-           res.json({payload:payload});
-       }else{
-           console.log('Unable to find any order with this particular order id: ',orderid);
-           res.sendStatus(404);
-       }
+        if(err){
+            console.log('Some error while accessing the the database');
+            res.sendStatus(500);
+        }else if(suborders.length > 0){
+            payload=buildOrder(suborders,orderid);
+            payload.customer = suborders[0].customer;
+            res.json({payload:payload});
+        }else{
+            console.log('Unable to find any order with this particular order id: ',orderid);
+            res.sendStatus(404);
+        }
     });
 
 })
 
 
 /*
-To place an order, we need to have the following arguments
-Token in the header and the following json to be sent
-{
-    merchantNumber:merchantNumber,
-    order:order,
-    orderSummary:orderSummary,
-    orderid:orderid( if order id is supplied, it will append this to the current exisintg order, else it will create a new user.
-}
+ To place an order, we need to have the following arguments
+ Token in the header and the following json to be sent
+ {
+ merchantNumber:merchantNumber,
+ order:order,
+ orderSummary:orderSummary,
+ orderid:orderid( if order id is supplied, it will append this to the current exisintg order, else it will create a new user.
+ }
  */
 app.post('/placeOrder',function(req,res,next)//noinspection BadExpressionStatementJS
 {
@@ -756,20 +752,20 @@ app.post('/placeOrder',function(req,res,next)//noinspection BadExpressionStateme
                     }
                 })
             }
-            }
+        }
 
     })
 })
 
 /*
-The customer details required to make the registration are
-name, email address and phone number.
-{
-    name:name,
-    email:email,
-    profile:(local/facebook/google),
-    userid:userid
-}
+ The customer details required to make the registration are
+ name, email address and phone number.
+ {
+ name:name,
+ email:email,
+ profile:(local/facebook/google),
+ password:password
+ }
  */
 app.post('/registerCustomer',function(req,res,next){
     var name = req.body.name;
@@ -785,15 +781,24 @@ app.post('/registerCustomer',function(req,res,next){
             if(profileFromDB !== profile){
                 res.json({data:"User has already signed up with this email id using the profile: "+profileFromDB});
             }else{
-                console.log('About to send the information back to customer');
-                var objectToBeEncoded = {};
-                objectToBeEncoded.name = customer.name;
-                objectToBeEncoded.customerNumber = customer.customerNumber;
-                objectToBeEncoded.email = customer.email;
-                objectToBeEncoded.iss ='foodpipe.in';
-                objectToBeEncoded.isMobile=1;
-                var token = jwt.encode(objectToBeEncoded,secretkey);
-                res.json({token:token,data:'Welcome'});
+                bcrypt.compare(req.body.password,customer.password,function(err,valid){
+                    if(err){
+                        res.json({data:'The user does not exist, please signup'});
+                    }
+                    else if(!valid){
+                        res.json({data:'The Username or password is not valid'});
+                    }else{
+                        console.log('About to send the information back to customer');
+                        var objectToBeEncoded = {};
+                        objectToBeEncoded.name = customer.name;
+                        objectToBeEncoded.customerNumber = customer.customerNumber;
+                        objectToBeEncoded.email = customer.email;
+                        objectToBeEncoded.iss ='foodpipe.in';
+                        objectToBeEncoded.isMobile=1;
+                        var token = jwt.encode(objectToBeEncoded,secretkey);
+                        res.json({token:token,data:'Welcome'});
+                    }
+                });
             }
         }else if(!customer){
             var customerNumber = getUniqueId(32);
@@ -804,23 +809,26 @@ app.post('/registerCustomer',function(req,res,next){
                 email:email,
                 userid:req.body.userid
             });
-            newCustomer.save(function(err,customer){
-                if(err){
-                    console.log('Error while saving the new customer to DB');
-                    res.sendStatus(500);
-                }else{
-                    var objectToBeEncoded = {};
-                    objectToBeEncoded.name = name;
-                    objectToBeEncoded.customerNumber = customerNumber;
-                    objectToBeEncoded.email = email;
-                    objectToBeEncoded.iss ='foodpipe.in';
-                    objectToBeEncoded.exp =Date.now()+86400000;
-                    objectToBeEncoded.isMobile=1;
-                    console.log('A Customer has been created with the following customer ID ',customerNumber);
-                    var token = jwt.encode(objectToBeEncoded,secretkey);
-                    res.json({token:token,data:'Welcome'});
-                }
-            })
+            bcrypt.hash(req.body.password,10,function(err,hash){
+                newCustomer.password = hash;
+                newCustomer.save(function(err,customer){
+                    if(err){
+                        console.log('Error while saving the new customer to DB');
+                        res.sendStatus(500);
+                    }else{
+                        var objectToBeEncoded = {};
+                        objectToBeEncoded.name = name;
+                        objectToBeEncoded.customerNumber = customerNumber;
+                        objectToBeEncoded.email = email;
+                        objectToBeEncoded.iss ='foodpipe.in';
+                        objectToBeEncoded.exp =Date.now()+86400000;
+                        objectToBeEncoded.isMobile=1;
+                        console.log('A Customer has been created with the following customer ID ',customerNumber);
+                        var token = jwt.encode(objectToBeEncoded,secretkey);
+                        res.json({token:token,data:'Welcome'});
+                    }
+                })
+            });
         }else{
             res.json({data:'The email address is already registered'});
         }
@@ -838,6 +846,6 @@ app.post('/sendToThisMerchant',function(req,res,next){
 
 /********************************************************************************************************************/
 
-app.get('/index.html',function(req,res,next){
-    res.sendfile('index.html');
+app.get('/ola',function(req,res,next){
+    res.json({data:"hello"});
 })
